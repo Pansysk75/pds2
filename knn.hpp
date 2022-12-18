@@ -3,8 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
-
-bool magic = true;
+#include "global_vars.hpp"
 
 struct knnresult
 {
