@@ -6,14 +6,13 @@
 #include <numeric>
 
 #include <cblas.h>
+
 #define idx(i, j, ld) (((i)*(ld))+(j))
-
-#define ROWMAJOR 1
-
-#define max_block_size 10000
+#define DEB(x) if(debug) std::cout << x << std::endl;
 
 struct knnWorkload {
     const std::vector<double>& X;
+    // start and end indices are not multiplied by d
     size_t x_start_idx;
     size_t x_end_idx; 
     size_t m_batch; //!< Number of query points in this batch    [scalar]
@@ -25,9 +24,32 @@ struct knnWorkload {
 
     size_t d; //!< Dimension of the points                 [scalar]
     size_t k; //!< Number of nearest neighbors             [scalar]
+
+    knnWorkload(const std::vector<double>& X, size_t x_start_idx, size_t x_end_idx, 
+                const std::vector<double>& Y, size_t y_start_idx, size_t y_end_idx, 
+                size_t d, size_t k) : 
+                X(X), x_start_idx(x_start_idx), x_end_idx(x_end_idx),
+                Y(Y), y_start_idx(y_start_idx), y_end_idx(y_end_idx),
+                d(d), k(k) 
+                {
+        m_batch = x_end_idx - x_start_idx;
+        n_batch = y_end_idx - y_start_idx;
+    }
+
+    std::string to_string() const {
+        return "x_start_idx = " + std::to_string(x_start_idx) + "\n" +
+                "x_end_idx = " + std::to_string(x_end_idx) + "\n" +
+                "y_start_idx = " + std::to_string(y_start_idx) + "\n" +
+                "y_end_idx = " + std::to_string(y_end_idx) + "\n" +
+                "m_batch = " + std::to_string(m_batch) + "\n" +
+                "n_batch = " + std::to_string(n_batch) + "\n" +
+                "d = " + std::to_string(d) + "\n" +
+                "k = " + std::to_string(k) + "\n";
+    }
 };
 
 struct knnWorkloadResult {
+    // start and end indices are multiplied by d
     size_t x_start_idx;
     size_t x_end_idx; 
 
@@ -55,36 +77,32 @@ struct knnWorkloadResult {
         y_end_idx = 0;
         m_batch = 0;
         n_batch = 0;
+        nidx = std::vector<size_t>();
+        ndist = std::vector<double>();
         d = 0;
         k = 0;
     }
 
-    // move constructor taking ownership of the vectors passed
-    knnWorkloadResult(
-        size_t x_start_idx,
-        size_t x_end_idx,
-        size_t y_start_idx,
-        size_t y_end_idx,
-        std::vector<size_t>&& nidx,
-        std::vector<double>&& ndist,
-        size_t m_batch,
-        size_t n_batch,
-        size_t d,
-        size_t k
-    ) : x_start_idx(x_start_idx),
-        x_end_idx(x_end_idx),
-        y_start_idx(y_start_idx),
-        y_end_idx(y_end_idx),
-        nidx(std::move(nidx)),
-        ndist(std::move(ndist)),
-        m_batch(m_batch),
-        n_batch(n_batch),
-        d(d),
-        k(k) {}
+    // constructor that moves vectors in
+    knnWorkloadResult(size_t x_start_idx, size_t x_end_idx, size_t y_start_idx, size_t y_end_idx, std::vector<size_t>&& nidx, std::vector<double>&& ndist, size_t m_batch, size_t n_batch, size_t d, size_t k) {
+        this->x_start_idx = x_start_idx;
+        this->x_end_idx = x_end_idx;
+        this->y_start_idx = y_start_idx;
+        this->y_end_idx = y_end_idx;
 
+        this->nidx = std::move(nidx);
+        this->ndist = std::move(ndist);
+        nidx = std::vector<size_t>();
+        ndist = std::vector<double>();
 
-    // std::move operator
-    knnWorkloadResult& operator=(knnWorkloadResult&& other) {
+        this->m_batch = m_batch;
+        this->n_batch = n_batch;
+        this->d = d;
+        this->k = k;
+    }
+
+    // move constructor
+    knnWorkloadResult(knnWorkloadResult&& other) {
         x_start_idx = other.x_start_idx;
         x_end_idx = other.x_end_idx;
         y_start_idx = other.y_start_idx;
@@ -95,31 +113,83 @@ struct knnWorkloadResult {
         n_batch = other.n_batch;
         d = other.d;
         k = other.k;
+
+        other.x_start_idx = 0;
+        other.x_end_idx = 0;
+        other.y_start_idx = 0;
+        other.y_end_idx = 0;
+        other.m_batch = 0;
+        other.n_batch = 0;
+        other.d = 0;
+        other.k = 0;
+    }
+
+    knnWorkloadResult& operator=(knnWorkloadResult&& other) {
+        if(this == &other){
+            return *this;
+            std::cout << "Self assignment" << std::endl;
+        }
+
+        x_start_idx = other.x_start_idx;
+        x_end_idx = other.x_end_idx;
+        y_start_idx = other.y_start_idx;
+        y_end_idx = other.y_end_idx;
+        nidx = std::move(other.nidx);
+        ndist = std::move(other.ndist);
+        m_batch = other.m_batch;
+        n_batch = other.n_batch;
+        d = other.d;
+        k = other.k;
+
+        other.x_start_idx = 0;
+        other.x_end_idx = 0;
+        other.y_start_idx = 0;
+        other.y_end_idx = 0;
+        other.nidx = std::vector<size_t>();
+        other.ndist = std::vector<double>();
+        other.m_batch = 0;
+        other.n_batch = 0;
+
         return *this;
+    }
+
+    std::string to_string() const {
+        DEB("knnWorkloadResult to_string called");
+        return "x_start_idx = " + std::to_string(x_start_idx) + "\n" +
+                "x_end_idx = " + std::to_string(x_end_idx) + "\n" +
+                "y_start_idx = " + std::to_string(y_start_idx) + "\n" +
+                "y_end_idx = " + std::to_string(y_end_idx) + "\n" +
+                "m_batch = " + std::to_string(m_batch) + "\n" +
+                "n_batch = " + std::to_string(n_batch) + "\n" +
+                "d = " + std::to_string(d) + "\n" +
+                "k = " + std::to_string(k) + "\n";
     }
 };
 
-knnWorkloadResult knnDistributed(knnWorkload wl) {
+knnWorkloadResult knnDistributed(const knnWorkload& wl) {
+    DEB("Entering knnDistributed with: ")
+    DEB(wl.to_string())
+
     size_t m_batch = wl.m_batch;
     size_t n_batch = wl.n_batch;
     size_t d = wl.d;
     size_t k = wl.k;
 
     std::vector<double> X2(m_batch);
-    for(size_t i = 0; i < m_batch; i++) {
-        X2[i] = cblas_ddot(
-            d, 
-            &wl.X[idx(i, wl.x_start_idx, d)], 1,
-            &wl.X[idx(i, wl.x_start_idx, d)], 1
+    for(size_t i = wl.x_start_idx; i < wl.x_end_idx; i++) {
+        X2[i-wl.x_start_idx] = cblas_ddot(
+            d,
+            &wl.X[idx(i, 0, d)], 1,
+            &wl.X[idx(i, 0, d)], 1
         );
     }
 
     std::vector<double> Y2(n_batch);
-    for(size_t i = 0; i < n_batch; i++) {
-        Y2[i] = cblas_ddot(
+    for(size_t i = wl.y_start_idx; i < wl.y_end_idx; i++) {
+        Y2[i-wl.y_start_idx] = cblas_ddot(
             d,
-            &wl.Y[idx(i, wl.y_start_idx, d)], 1,
-            &wl.Y[idx(i, wl.y_start_idx, d)], 1
+            &wl.Y[idx(i, 0, d)], 1,
+            &wl.Y[idx(i, 0, d)], 1
         );
     }
 
@@ -127,51 +197,72 @@ knnWorkloadResult knnDistributed(knnWorkload wl) {
 
     // m, n, d refer to Y after transposition
     cblas_dgemm(
-        CblasRowMajor, CblasNoTrans, CblasTrans,
-        m_batch, n_batch, d, 
-        -2.0, 
-        &wl.X[wl.x_start_idx], d, 
-        &wl.Y[wl.y_start_idx], d, 
-        0.0,
+        CblasRowMajor,
+        CblasNoTrans, CblasTrans,
+        m_batch, n_batch, d,
+        -2.0,
+        &wl.X[idx(wl.x_start_idx, 0, d)], d,
+        &wl.Y[idx(wl.y_start_idx, 0, d)], d,
+        0,
         D.data(), wl.n_batch
     );
+
 
     for(size_t i = 0; i < m_batch; i++)
         for(size_t j = 0; j < n_batch; j++)
             // D[idx(i, j, wl.n_batch)] is the distance between X[i + x_start_idx,:] and Y[j + y_start_idx,:]
-            D[idx(i, j, n_batch)] += X2[i + wl.x_start_idx] + Y2[j + wl.y_start_idx];
+            D[idx(i, j, n_batch)] += X2[i] + Y2[j];
 
     std::vector<size_t> nidx(m_batch * k);
     std::vector<double> ndist(m_batch * k);
 
-    std::vector<size_t> indices(n_batch);
 
     for(size_t i = 0; i < m_batch; i++) {
+        std::vector<size_t> indices(n_batch);
         std::iota(indices.begin(), indices.end(), wl.y_start_idx);
+        size_t y_start_idx = wl.y_start_idx;
 
         std::partial_sort_copy(
             indices.begin(), indices.end(),
-            &nidx[idx(i, 0, d)], &nidx[idx(i, k, d)],
-            [&D, n_batch, i](size_t a, size_t b) {
-                return D[idx(i, a, n_batch)] < D[idx(i, b, n_batch)];
+            &nidx[idx(i, 0, k)], &nidx[idx(i, k, k)],
+            [&D, n_batch, i, y_start_idx](size_t a, size_t b) {
+                return D[idx(i, a - y_start_idx, n_batch)] < D[idx(i, b - y_start_idx, n_batch)];
             }
         );
 
         for(size_t j = 0; j < k; j++) {
-            ndist[idx(i, j, k)] = D[idx(i, nidx[j] - wl.y_start_idx, n_batch)];
+            ndist[idx(i, j, k)] = D[idx(i, nidx[idx(i, j, k)] - wl.y_start_idx, n_batch)];
         }
     }
+    X2 = std::vector<double>();
+
+    Y2 = std::vector<double>();
+
+    D = std::vector<double>();
+
+    DEB("Finished knnDistributed")
 
     return {
-        wl.x_start_idx, wl.x_end_idx, wl.y_start_idx, wl.y_end_idx,
-        std::move(nidx), std::move(ndist),
-        wl.m_batch, wl.n_batch, wl.d, wl.k
+        wl.x_start_idx,
+        wl.x_end_idx,
+        wl.y_start_idx,
+        wl.y_end_idx,
+        std::move(nidx),
+        std::move(ndist),
+        m_batch,
+        n_batch,
+        d,
+        k
     };
+
 };
 
 // combines both into the knnresult with the largest m
 // returns 0 if that is a and b otherwise
 void combineKnnresultsHorizontal(knnWorkloadResult& left, knnWorkloadResult& right){
+    DEB("Starting combineKnnresultsHorizontal with:")
+    DEB(left.to_string())
+    DEB(right.to_string())
 
     // starting cold
     if (left.k == 0 && left.d == 0 && left.m_batch == 0 && left.n_batch == 0) {
@@ -201,28 +292,31 @@ void combineKnnresultsHorizontal(knnWorkloadResult& left, knnWorkloadResult& rig
         size_t l_ptr = 0, r_ptr = 0;
 
         while (l_ptr + r_ptr < left.k) {
-            size_t l_idx = left.nidx[idx(i, l_ptr, left.d)];
-            size_t r_idx = right.nidx[idx(i, r_ptr, right.d)];
+            size_t l_idx = left.nidx[idx(i, l_ptr, left.k)];
+            size_t r_idx = right.nidx[idx(i, r_ptr, right.k)];
 
-            double l_dist = left.ndist[idx(i, l_ptr, left.d)];
-            double r_dist = right.ndist[idx(i, r_ptr, right.d)];
+            double l_dist = left.ndist[idx(i, l_ptr, left.k)];
+            double r_dist = right.ndist[idx(i, r_ptr, right.k)];
 
             if (l_dist < r_dist) {
-                nidx[idx(i, l_ptr + r_ptr, left.d)] = l_idx;
-                ndist[idx(i, l_ptr + r_ptr, left.d)] = left.ndist[idx(i, l_ptr, left.d)];
+                nidx[idx(i, l_ptr + r_ptr, left.k)] = l_idx;
+                ndist[idx(i, l_ptr + r_ptr, left.k)] = left.ndist[idx(i, l_ptr, left.k)];
                 l_ptr++;
             } else {
-                nidx[idx(i, l_ptr + r_ptr, left.d)] = r_idx;
-                ndist[idx(i, l_ptr + r_ptr, left.d)] = right.ndist[idx(i, r_ptr, right.d)];
+                nidx[idx(i, l_ptr + r_ptr, left.k)] = r_idx;
+                ndist[idx(i, l_ptr + r_ptr, left.k)] = right.ndist[idx(i, r_ptr, right.k)];
                 r_ptr++;
             }
         }
     }
 
+    DEB("Moving nidx and ndist")
     // previously held stuff is auto-released
     left.nidx = std::move(nidx);
     left.ndist = std::move(ndist);
 
+    nidx = std::vector<size_t>();
+    ndist = std::vector<double>();
     return;
 }
 
@@ -232,7 +326,6 @@ void combineKnnresultsVertical(knnWorkloadResult& up, knnWorkloadResult& down){
         up = std::move(down);
         return;
     }
-
 
     if (up.k != down.k) {
         throw std::runtime_error("k must be the same for both knnWorkloadResults");
@@ -287,22 +380,18 @@ knnresult kNN(const std::vector<double>& X, const std::vector<double>& Y, const 
     knnWorkloadResult result;
     for(size_t hor_block = 0; hor_block < num_workers; hor_block++) {
         size_t x_start_idx = hor_block * m_per_batch;
-        size_t x_end_idx = hor_block == num_workers-1 ? m : (hor_block + 1) * m_per_batch;
+        size_t x_end_idx = (hor_block == num_workers-1 ? m : (hor_block + 1) * m_per_batch);
 
         knnWorkloadResult superblock_result;
         for(size_t ver_block = 0; ver_block < num_workers; ver_block++) {
             size_t y_start_idx = ver_block * n_per_batch;
-            size_t y_end_idx = ver_block == num_workers-1 ? n : (ver_block + 1) * n_per_batch;
+            size_t y_end_idx = (ver_block == num_workers-1 ? n : (ver_block + 1) * n_per_batch);
 
-            if (ver_block == num_workers - 1) {
-                y_end_idx = n;
-            }
-
-            knnWorkload wl = { 
-                X, x_start_idx, x_end_idx, m,
-                Y, y_start_idx, y_end_idx, n, 
+            knnWorkload wl(
+                X, x_start_idx, x_end_idx,
+                Y, y_start_idx, y_end_idx, 
                 d, k
-            };
+            );
 
             knnWorkloadResult block_result = knnDistributed(wl);
             combineKnnresultsHorizontal(superblock_result, block_result);
