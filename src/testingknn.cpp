@@ -71,7 +71,7 @@ knnTestData random_grid(size_t m, size_t n, size_t d, size_t k) {
 knnresult runData(const std::vector<double>& X, const std::vector<double>& Y, const size_t m, const size_t n, const size_t d, const size_t k) {
     auto start = std::chrono::high_resolution_clock::now();
     size_t _k = k;
-    knnresult result = kNN(X, Y, m, n, d, _k);
+    knnresult result = knnSerial(X, Y, m, n, d, _k);
     auto end = std::chrono::high_resolution_clock::now();
 
     std::chrono::duration<double> elapsed = end - start;

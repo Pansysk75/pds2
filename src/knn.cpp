@@ -127,7 +127,7 @@ struct knnWorkloadResult {
     knnWorkloadResult& operator=(knnWorkloadResult&& other) {
         if(this == &other){
             return *this;
-            std::cout << "Self assignment" << std::endl;
+            DEB("Self assignment");
         }
 
         x_start_idx = other.x_start_idx;
@@ -166,8 +166,8 @@ struct knnWorkloadResult {
     }
 };
 
-knnWorkloadResult knnDistributed(const knnWorkload& wl) {
-    DEB("Entering knnDistributed with: ")
+knnWorkloadResult knnBlock(const knnWorkload& wl) {
+    DEB("Entering knnBlock with: ")
     DEB(wl.to_string())
 
     size_t m_batch = wl.m_batch;
@@ -207,7 +207,6 @@ knnWorkloadResult knnDistributed(const knnWorkload& wl) {
         D.data(), wl.n_batch
     );
 
-
     for(size_t i = 0; i < m_batch; i++)
         for(size_t j = 0; j < n_batch; j++)
             // D[idx(i, j, wl.n_batch)] is the distance between X[i + x_start_idx,:] and Y[j + y_start_idx,:]
@@ -240,7 +239,7 @@ knnWorkloadResult knnDistributed(const knnWorkload& wl) {
 
     D = std::vector<double>();
 
-    DEB("Finished knnDistributed")
+    DEB("Finished knnBlock")
 
     return {
         wl.x_start_idx,
@@ -359,7 +358,7 @@ void combineKnnresultsVertical(knnWorkloadResult& up, knnWorkloadResult& down){
 
 \return the kNN result
 */
-knnresult kNN(const std::vector<double>& X, const std::vector<double>& Y, const size_t m, const size_t n, const size_t d, size_t k)
+knnresult knnSerial(const std::vector<double>& X, const std::vector<double>& Y, const size_t m, const size_t n, const size_t d, size_t k)
 {
     /*
     if(magic){
@@ -373,19 +372,18 @@ knnresult kNN(const std::vector<double>& X, const std::vector<double>& Y, const 
         k = n;
     }
 
-    size_t num_workers = 3;
-    size_t m_per_batch = m / num_workers;
-    size_t n_per_batch = n / num_workers;
+    size_t m_per_batch = m / num_batches;
+    size_t n_per_batch = n / num_batches;
 
     knnWorkloadResult result;
-    for(size_t hor_block = 0; hor_block < num_workers; hor_block++) {
+    for(size_t hor_block = 0; hor_block < num_batches; hor_block++) {
         size_t x_start_idx = hor_block * m_per_batch;
-        size_t x_end_idx = (hor_block == num_workers-1 ? m : (hor_block + 1) * m_per_batch);
+        size_t x_end_idx = (hor_block == num_batches-1 ? m : (hor_block + 1) * m_per_batch);
 
         knnWorkloadResult superblock_result;
-        for(size_t ver_block = 0; ver_block < num_workers; ver_block++) {
+        for(size_t ver_block = 0; ver_block < num_batches; ver_block++) {
             size_t y_start_idx = ver_block * n_per_batch;
-            size_t y_end_idx = (ver_block == num_workers-1 ? n : (ver_block + 1) * n_per_batch);
+            size_t y_end_idx = (ver_block == num_batches-1 ? n : (ver_block + 1) * n_per_batch);
 
             knnWorkload wl(
                 X, x_start_idx, x_end_idx,
@@ -393,10 +391,11 @@ knnresult kNN(const std::vector<double>& X, const std::vector<double>& Y, const 
                 d, k
             );
 
-            knnWorkloadResult block_result = knnDistributed(wl);
+            knnWorkloadResult block_result = knnBlock(wl);
             combineKnnresultsHorizontal(superblock_result, block_result);
             
-            std::cout << "x_start_idx: " << result.x_start_idx << " x_end_idx: " << result.x_end_idx << " y_start_idx: " << result.y_start_idx << " y_end_idx: " << result.y_end_idx << std::endl;
+            DEB("x_start_idx: " << result.x_start_idx << " x_end_idx: " << 
+            result.x_end_idx << " y_start_idx: " << result.y_start_idx << " y_end_idx: " << result.y_end_idx << std::endl);
         }
 
         combineKnnresultsVertical(result, superblock_result);
@@ -407,4 +406,3 @@ knnresult kNN(const std::vector<double>& X, const std::vector<double>& Y, const 
         result.m_batch, result.k
     };
 }
-

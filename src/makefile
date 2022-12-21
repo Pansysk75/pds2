@@ -1,9 +1,10 @@
 CC=g++
 
 OPT = -O0
+DEB = -g
 
-CFLAGS = -Wall -g $(OPT) -std=c++20
-LFLAGS = -Wall -g $(OPT) -std=c++20
+CFLAGS = -Wall $(DEB) $(OPT) -std=c++20
+LFLAGS = -Wall $(DEB) $(OPT) -std=c++20
 LIBS = -lblas
 
 DEPS = knn.hpp fileio.hpp testingknn.hpp global_vars.hpp

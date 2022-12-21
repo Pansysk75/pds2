@@ -23,4 +23,4 @@ struct knnresult
 \param k Number of neighbors           [scalar]
 \return the kNN result
 */
-knnresult kNN(const std::vector<double>& X, const std::vector<double>& Y, const size_t m, const size_t n, const size_t d, size_t k);
+knnresult knnSerial(const std::vector<double>& X, const std::vector<double>& Y, const size_t m, const size_t n, const size_t d, size_t k);
