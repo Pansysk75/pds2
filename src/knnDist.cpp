@@ -39,10 +39,10 @@ struct QueryPacket {
     std::vector<double> X;
 
     QueryPacket(
-        size_t n_packet, size_t d,
+        size_t m_packet, size_t d,
         size_t x_start_index, size_t x_end_index
     ) : 
-        m_packet(n_packet), d(d),
+        m_packet(m_packet), d(d),
         x_start_index(x_start_index), x_end_index(x_end_index) 
     {
         X = std::vector<double>(m_packet * d);
