@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <chrono>
 #include <numeric>
+#include <queue>
 
 #include <cblas.h>
 
@@ -233,12 +234,6 @@ knnWorkloadResult knnBlock(const knnWorkload& wl) {
             ndist[idx(i, j, k)] = D[idx(i, nidx[idx(i, j, k)] - wl.y_start_idx, n_batch)];
         }
     }
-    X2 = std::vector<double>();
-
-    Y2 = std::vector<double>();
-
-    D = std::vector<double>();
-
     DEB("Finished knnBlock")
 
     return {
@@ -299,11 +294,11 @@ void combineKnnresultsHorizontal(knnWorkloadResult& left, knnWorkloadResult& rig
 
             if (l_dist < r_dist) {
                 nidx[idx(i, l_ptr + r_ptr, left.k)] = l_idx;
-                ndist[idx(i, l_ptr + r_ptr, left.k)] = left.ndist[idx(i, l_ptr, left.k)];
+                ndist[idx(i, l_ptr + r_ptr, left.k)] = l_dist;
                 l_ptr++;
             } else {
                 nidx[idx(i, l_ptr + r_ptr, left.k)] = r_idx;
-                ndist[idx(i, l_ptr + r_ptr, left.k)] = right.ndist[idx(i, r_ptr, right.k)];
+                ndist[idx(i, l_ptr + r_ptr, left.k)] = r_dist;
                 r_ptr++;
             }
         }
