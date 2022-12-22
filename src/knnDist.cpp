@@ -7,200 +7,168 @@
 
 #include <cblas.h>
 
+#include "global_vars.hpp"
+#include "knnDist.hpp"
+
 #define idx(i, j, d) ((i)*(d) + (j))
 
-struct CorpusPacket {
-    const size_t n_packet;
-    const size_t d;
+CorpusPacket::CorpusPacket(
+    size_t n_packet, size_t d,
+    size_t y_start_index, size_t y_end_index
+) : 
+    n_packet(n_packet), d(d),
+    y_start_index(y_start_index), y_end_index(y_end_index)
+{
+    Y = std::vector<double>(n_packet * d);
+}
 
-    size_t y_start_index;
-    size_t y_end_index;
+QueryPacket::QueryPacket(
+    size_t m_packet, size_t d,
+    size_t x_start_index, size_t x_end_index
+) : 
+    m_packet(m_packet), d(d),
+    x_start_index(x_start_index), x_end_index(x_end_index) 
+{
+    X = std::vector<double>(m_packet * d);
+}
 
-    std::vector<double> Y;
+ResultPacket::ResultPacket(
+    size_t m_packet, size_t k,
+    size_t x_start_index, size_t x_end_index,
+    size_t y_start_index, size_t y_end_index
+) :
+    m_packet(m_packet), k(k),
+    x_start_index(x_start_index), x_end_index(x_end_index),
+    y_start_index(y_start_index), y_end_index(y_end_index)
+{
+    nidx = std::vector<size_t>(m_packet * k);
+    ndist = std::vector<double>(m_packet * k);
+}
 
-    CorpusPacket(
-        size_t n_packet, size_t d,
-        size_t y_start_index, size_t y_end_index
-    ) : 
-        n_packet(n_packet), d(d),
-        y_start_index(y_start_index), y_end_index(y_end_index)
-    {
-        Y = std::vector<double>(n_packet * d);
-    }
-};
-
-struct QueryPacket {
-    const size_t m_packet;
-    const size_t d;
-
-    size_t x_start_index;
-    size_t x_end_index;
-
-    std::vector<double> X;
-
-    QueryPacket(
-        size_t m_packet, size_t d,
-        size_t x_start_index, size_t x_end_index
-    ) : 
-        m_packet(m_packet), d(d),
-        x_start_index(x_start_index), x_end_index(x_end_index) 
-    {
-        X = std::vector<double>(m_packet * d);
-    }
-};
-
-struct ResultPacket {
-    const size_t m_packet;
-    const size_t k;
-
-    const size_t x_start_index;
-    const size_t x_end_index;
-
-    const size_t y_start_index;
-    const size_t y_end_index;
-
-    // in global index of y
-    std::vector<size_t> nidx;
-    std::vector<double> ndist;
-
-    ResultPacket(
-        size_t m_packet, size_t k,
-        size_t x_start_index, size_t x_end_index,
-        size_t y_start_index, size_t y_end_index
-    ) :
-        m_packet(m_packet), k(k),
-        x_start_index(x_start_index), x_end_index(x_end_index),
-        y_start_index(y_start_index), y_end_index(y_end_index)
-    {
-        nidx = std::vector<size_t>(m_packet * k);
-        ndist = std::vector<double>(m_packet * k);
-    }
-
-    ResultPacket(
-        const QueryPacket& query,
-        const CorpusPacket& corpus,
-        size_t k
-    ) :
-        m_packet(query.m_packet), k(k),
-        x_start_index(query.x_start_index), x_end_index(query.x_end_index),
-        y_start_index(corpus.y_start_index), y_end_index(corpus.y_end_index)
-    {
-        std::vector<double> X2(query.m_packet);
-        for(size_t i = 0; i < query.m_packet; i++){
-            X2[i] = cblas_ddot(
-                query.d,
-                &query.X[idx(i, 0, query.d)], 1,
-                &query.X[idx(i, 0, query.d)], 1
-            );
-        }
-
-        std::vector<double> Y2(corpus.n_packet);
-        for(size_t i = 0; i < corpus.n_packet; i++){
-            Y2[i] = cblas_ddot(
-                corpus.d,
-                &corpus.Y[idx(i, 0, corpus.d)], 1,
-                &corpus.Y[idx(i, 0, corpus.d)], 1
-            );
-        }
-
-        std::vector<double> D(query.m_packet * corpus.n_packet);
-
-        cblas_dgemm(
-            CblasRowMajor, CblasNoTrans, CblasTrans,
-            query.m_packet, corpus.n_packet, corpus.d,
-            -2.0,
-            query.X.data(), query.d,
-            corpus.Y.data(), corpus.d,
-            0.0,
-            D.data(), corpus.n_packet
-        );
-
-        for(size_t i = 0; i < query.m_packet; i++){
-            // maybe cache X2_i
-            // X2_i = X2[i];
-            for(size_t j = 0; j < corpus.n_packet; j++){
-                D[idx(i, j, corpus.n_packet)] += X2[i] + Y2[j];
-            }
-        }
-
-    /* ALTERNATIVELY POSSIBLY FASTER
-        for(size_t i = 0; i < query.m_packet; i++){
-            // maybe cache X2_i
-            // X2_i = X2[i];
-            for(size_t j = 0; j < corpus.n_packet; j++){
-            D[idx(i, j, corpus.n_packet)] = X2[i] + Y2[j];
-            }
-        }
-
-        cblas_dgemm(
-            CblasRowMajor, CblasNoTrans, CblasTrans,
-            query.m_packet, corpus.n_packet, corpus.d,
-            -2.0,
-            query.X.data(), query.d,
-            corpus.Y.data(), corpus.d,
-            1.0,
-            D.data(), corpus.n_packet
-        );
-    */
-        nidx.resize(query.m_packet * k);
-        ndist.resize(query.m_packet * k);
-
-        for(size_t i = 0; i < query.m_packet; i++) {
-            std::vector<size_t> indices(corpus.n_packet);
-            std::iota(indices.begin(), indices.end(), 0);
-
-            size_t n_packet = corpus.n_packet;
-
-            std::partial_sort_copy(
-                indices.begin(), indices.end(),
-                &nidx[idx(i, 0, k)], &nidx[idx(i, k, k)],
-                [&D, i, n_packet](size_t a, size_t b) {
-                    return D[idx(i, a, n_packet)] < D[idx(i, b, n_packet)]; 
-                }
-            );
-
-            // convert y index to global y index
-            for(size_t j = 0; j < k; j++) {
-                nidx[idx(i, j, k)] += corpus.y_start_index;
-            }
-
-            for(size_t j = 0; j < k; j++) {
-                size_t jth_nn = nidx[idx(i, j, k)] - corpus.y_start_index;
-
-                ndist[idx(i, j, k)] = D[idx(i, jth_nn, corpus.n_packet)];
-            }
-        }
-   }
-
-    // they need to be distances of the 
-    // SAME query points
-    // DIFFERENT corpus points  
-    static bool xCombinable(ResultPacket const& p1, ResultPacket const& p2) {
-        return (
-            p1.k == p2.k &&
-            p1.m_packet == p2.m_packet &&
-            p1.x_start_index == p2.x_start_index &&
-            p1.x_end_index == p2.x_end_index
+ResultPacket::ResultPacket(
+    const QueryPacket& query,
+    const CorpusPacket& corpus,
+    size_t k
+) :
+    m_packet(query.m_packet), k(k),
+    x_start_index(query.x_start_index), x_end_index(query.x_end_index),
+    y_start_index(corpus.y_start_index), y_end_index(corpus.y_end_index)
+{
+    std::vector<double> X2(query.m_packet);
+    for(size_t i = 0; i < query.m_packet; i++){
+        X2[i] = cblas_ddot(
+            query.d,
+            &query.X[idx(i, 0, query.d)], 1,
+            &query.X[idx(i, 0, query.d)], 1
         );
     }
 
-    // they need to be distances of
-    // DIFFERENT query points
-    // SAME corpus points  
-    static bool yCombinable(ResultPacket const& p1, ResultPacket const& p2) {
-        return (
-            p1.k == p2.k &&
-            p1.y_start_index == p2.y_start_index && 
-            p1.y_end_index == p2.y_end_index
+    std::vector<double> Y2(corpus.n_packet);
+    for(size_t i = 0; i < corpus.n_packet; i++){
+        Y2[i] = cblas_ddot(
+            corpus.d,
+            &corpus.Y[idx(i, 0, corpus.d)], 1,
+            &corpus.Y[idx(i, 0, corpus.d)], 1
         );
     }
-};
+
+    std::vector<double> D(query.m_packet * corpus.n_packet);
+
+    cblas_dgemm(
+        CblasRowMajor, CblasNoTrans, CblasTrans,
+        query.m_packet, corpus.n_packet, corpus.d,
+        -2.0,
+        query.X.data(), query.d,
+        corpus.Y.data(), corpus.d,
+        0.0,
+        D.data(), corpus.n_packet
+    );
+
+    for(size_t i = 0; i < query.m_packet; i++){
+        // maybe cache X2_i
+        // X2_i = X2[i];
+        for(size_t j = 0; j < corpus.n_packet; j++){
+            D[idx(i, j, corpus.n_packet)] += X2[i] + Y2[j];
+        }
+    }
+
+/* ALTERNATIVELY POSSIBLY FASTER
+    for(size_t i = 0; i < query.m_packet; i++){
+        // maybe cache X2_i
+        // X2_i = X2[i];
+        for(size_t j = 0; j < corpus.n_packet; j++){
+        D[idx(i, j, corpus.n_packet)] = X2[i] + Y2[j];
+        }
+    }
+
+    cblas_dgemm(
+        CblasRowMajor, CblasNoTrans, CblasTrans,
+        query.m_packet, corpus.n_packet, corpus.d,
+        -2.0,
+        query.X.data(), query.d,
+        corpus.Y.data(), corpus.d,
+        1.0,
+        D.data(), corpus.n_packet
+    );
+*/
+    nidx.resize(query.m_packet * k);
+    ndist.resize(query.m_packet * k);
+
+    for(size_t i = 0; i < query.m_packet; i++) {
+        std::vector<size_t> indices(corpus.n_packet);
+        std::iota(indices.begin(), indices.end(), 0);
+
+        size_t n_packet = corpus.n_packet;
+
+        std::partial_sort_copy(
+            indices.begin(), indices.end(),
+            &nidx[idx(i, 0, k)], &nidx[idx(i, k, k)],
+            [&D, i, n_packet](size_t a, size_t b) {
+                return D[idx(i, a, n_packet)] < D[idx(i, b, n_packet)]; 
+            }
+        );
+
+        // convert y index to global y index
+        for(size_t j = 0; j < k; j++) {
+            nidx[idx(i, j, k)] += corpus.y_start_index;
+        }
+
+        for(size_t j = 0; j < k; j++) {
+            size_t jth_nn = nidx[idx(i, j, k)] - corpus.y_start_index;
+
+            ndist[idx(i, j, k)] = D[idx(i, jth_nn, corpus.n_packet)];
+        }
+    }
+}
+
+// they need to be distances of
+// SAME query points
+// DIFFERENT corpus points  
+bool ResultPacket::xCombinable(ResultPacket const& p1, ResultPacket const& p2) {
+    return (
+        p1.k == p2.k &&
+        p1.m_packet == p2.m_packet &&
+        p1.x_start_index == p2.x_start_index &&
+        p1.x_end_index == p2.x_end_index
+    );
+}
+
+// they need to be distances of
+// DIFFERENT query points
+// SAME corpus points  
+bool ResultPacket::yCombinable(ResultPacket const& p1, ResultPacket const& p2) {
+    return (
+        p1.k == p2.k &&
+        p1.y_start_index == p2.y_start_index && 
+        p1.y_end_index == p2.y_end_index
+    );
+}
+
 
 // it is assumed that the p1.y_end_index == p2.y_start_index
 // for example we combine the k nearest neighbors of x[0:100] in both results
 // but the first is the k nearest neighbors from y[0:100] and the second is the k nearest neighbors from y[100:200]
-ResultPacket combineKnnResultsSameX(const ResultPacket& p1, const ResultPacket& p2) {
-
+ResultPacket ResultPacket::combineKnnResultsSameX(const ResultPacket& p1, const ResultPacket& p2) {
     if(!(p1.x_end_index == p2.x_start_index)) {
         throw std::runtime_error("Cannot combine knn results, y indices are not contiguous");
     }
@@ -240,7 +208,7 @@ ResultPacket combineKnnResultsSameX(const ResultPacket& p1, const ResultPacket& 
 // it is assumed that p1.x_end_index == p2.x_start_index
 // for example we combine the k nearest neighbors from y[0:100] in both results
 // the first is the k nearest neighbors of x[0:100] and the second is the k nearest neighbors of x[100:200]
-ResultPacket combineKnnResultsSameY(const ResultPacket& p1, const ResultPacket& p2) {
+ResultPacket ResultPacket::combineKnnResultsSameY(const ResultPacket& p1, const ResultPacket& p2) {
     if(!(p1.y_end_index == p2.y_start_index)) {
         throw std::runtime_error("Cannot combine knn results, y indices are not contiguous");
     }
