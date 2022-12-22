@@ -12,6 +12,7 @@ struct mpi_process{
     }
 
     ~mpi_process(){
+        std::cout << world_rank << ": exited" << std::endl;
         MPI_Finalize();
     }
 

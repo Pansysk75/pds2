@@ -10,8 +10,8 @@ class worker{
 
     com_port com;
 
-    point_set corpus_set;
     point_set query_set;
+    point_set corpus_set;
 
     point_set receiving_set;
 
@@ -23,8 +23,8 @@ class worker{
         // slaves have processed all data.
         this->rank = rank;
 
-        receive_set(corpus_set, MASTER_RANK);
         receive_set(query_set, MASTER_RANK);
+        receive_set(corpus_set, MASTER_RANK);
         
     }
 
@@ -36,7 +36,7 @@ class worker{
 
             // Start sending the part we just proccessed
             // Start receiving the part we will proccess later
-            cyclic_send_begin(query_set);
+            cyclic_send_begin(corpus_set);
             cyclic_receive_begin(receiving_set);
 
 
@@ -50,7 +50,7 @@ class worker{
             cyclic_receive_wait();
 
             // Update query_set with received set
-            query_set = std::move(receiving_set);
+            corpus_set = std::move(receiving_set);
             
         }
 

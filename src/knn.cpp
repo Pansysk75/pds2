@@ -120,7 +120,7 @@ knnresult kNN(double * X, double * Y, int n, int m, int d, int k){
     return knn_result;
 }
 
-int main(){
+void test_kNN(){
     int d = 2; // number of dimensions
     int m = 4; // number of points in X
     int n = 4; // number of points in Y
