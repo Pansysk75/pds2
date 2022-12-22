@@ -76,6 +76,102 @@ struct ResultPacket {
         ndist = std::vector<double>(m_packet * k);
     }
 
+    ResultPacket(
+        const QueryPacket& query,
+        const CorpusPacket& corpus,
+        size_t k
+    ) :
+        m_packet(query.m_packet), k(k),
+        x_start_index(query.x_start_index), x_end_index(query.x_end_index),
+        y_start_index(corpus.y_start_index), y_end_index(corpus.y_end_index)
+    {
+        std::vector<double> X2(query.m_packet);
+        for(size_t i = 0; i < query.m_packet; i++){
+            X2[i] = cblas_ddot(
+                query.d,
+                &query.X[idx(i, 0, query.d)], 1,
+                &query.X[idx(i, 0, query.d)], 1
+            );
+        }
+
+        std::vector<double> Y2(corpus.n_packet);
+        for(size_t i = 0; i < corpus.n_packet; i++){
+            Y2[i] = cblas_ddot(
+                corpus.d,
+                &corpus.Y[idx(i, 0, corpus.d)], 1,
+                &corpus.Y[idx(i, 0, corpus.d)], 1
+            );
+        }
+
+        std::vector<double> D(query.m_packet * corpus.n_packet);
+
+        cblas_dgemm(
+            CblasRowMajor, CblasNoTrans, CblasTrans,
+            query.m_packet, corpus.n_packet, corpus.d,
+            -2.0,
+            query.X.data(), query.d,
+            corpus.Y.data(), corpus.d,
+            0.0,
+            D.data(), corpus.n_packet
+        );
+
+        for(size_t i = 0; i < query.m_packet; i++){
+            // maybe cache X2_i
+            // X2_i = X2[i];
+            for(size_t j = 0; j < corpus.n_packet; j++){
+                D[idx(i, j, corpus.n_packet)] += X2[i] + Y2[j];
+            }
+        }
+
+    /* ALTERNATIVELY POSSIBLY FASTER
+        for(size_t i = 0; i < query.m_packet; i++){
+            // maybe cache X2_i
+            // X2_i = X2[i];
+            for(size_t j = 0; j < corpus.n_packet; j++){
+            D[idx(i, j, corpus.n_packet)] = X2[i] + Y2[j];
+            }
+        }
+
+        cblas_dgemm(
+            CblasRowMajor, CblasNoTrans, CblasTrans,
+            query.m_packet, corpus.n_packet, corpus.d,
+            -2.0,
+            query.X.data(), query.d,
+            corpus.Y.data(), corpus.d,
+            1.0,
+            D.data(), corpus.n_packet
+        );
+    */
+        nidx.resize(query.m_packet * k);
+        ndist.resize(query.m_packet * k);
+
+        for(size_t i = 0; i < query.m_packet; i++) {
+            std::vector<size_t> indices(corpus.n_packet);
+            std::iota(indices.begin(), indices.end(), 0);
+
+            size_t n_packet = corpus.n_packet;
+
+            std::partial_sort_copy(
+                indices.begin(), indices.end(),
+                &nidx[idx(i, 0, k)], &nidx[idx(i, k, k)],
+                [&D, i, n_packet](size_t a, size_t b) {
+                    return D[idx(i, a, n_packet)] < D[idx(i, b, n_packet)]; 
+                }
+            );
+
+            // convert y index to global y index
+            for(size_t j = 0; j < k; j++) {
+                nidx[idx(i, j, k)] += corpus.y_start_index;
+            }
+
+            for(size_t j = 0; j < k; j++) {
+                size_t jth_nn = nidx[idx(i, j, k)] - corpus.y_start_index;
+
+                ndist[idx(i, j, k)] = D[idx(i, jth_nn, corpus.n_packet)];
+            }
+        }
+   }
+
     // they need to be distances of the 
     // SAME query points
     // DIFFERENT corpus points  
@@ -99,102 +195,6 @@ struct ResultPacket {
         );
     }
 };
-
-ResultPacket knnPacket(CorpusPacket& corpus, QueryPacket& query, size_t k){
-    ResultPacket result(
-        query.m_packet, k,
-        query.x_start_index, query.x_end_index,
-        corpus.y_start_index, corpus.y_end_index
-    );
-
-    std::vector<double> X2(query.m_packet);
-    for(size_t i = 0; i < query.m_packet; i++){
-        X2[i] = cblas_ddot(
-            query.d,
-            &query.X[idx(i, 0, query.d)], 1,
-            &query.X[idx(i, 0, query.d)], 1
-        );
-    }
-
-    std::vector<double> Y2(corpus.n_packet);
-    for(size_t i = 0; i < corpus.n_packet; i++){
-        Y2[i] = cblas_ddot(
-            corpus.d,
-            &corpus.Y[idx(i, 0, corpus.d)], 1,
-            &corpus.Y[idx(i, 0, corpus.d)], 1
-        );
-    }
-
-    std::vector<double> D(query.m_packet * corpus.n_packet);
-
-    cblas_dgemm(
-        CblasRowMajor, CblasNoTrans, CblasTrans,
-        query.m_packet, corpus.n_packet, corpus.d,
-        -2.0,
-        query.X.data(), query.d,
-        corpus.Y.data(), corpus.d,
-        0.0,
-        D.data(), corpus.n_packet
-    );
-
-    for(size_t i = 0; i < query.m_packet; i++){
-        // maybe cache X2_i
-        // X2_i = X2[i];
-        for(size_t j = 0; j < corpus.n_packet; j++){
-            D[idx(i, j, corpus.n_packet)] += X2[i] + Y2[j];
-        }
-    }
-
-/* ALTERNATIVELY 
-    for(size_t i = 0; i < query.m_packet; i++){
-        // maybe cache X2_i
-        // X2_i = X2[i];
-        for(size_t j = 0; j < corpus.n_packet; j++){
-           D[idx(i, j, corpus.n_packet)] = X2[i] + Y2[j];
-        }
-    }
-
-    cblas_dgemm(
-        CblasRowMajor, CblasNoTrans, CblasTrans,
-        query.m_packet, corpus.n_packet, corpus.d,
-        -2.0,
-        query.X.data(), query.d,
-        corpus.Y.data(), corpus.d,
-        1.0,
-        D.data(), corpus.n_packet
-    );
-*/
-    result.nidx.resize(query.m_packet * k);
-    result.ndist.resize(query.m_packet * k);
-
-    for(size_t i = 0; i < query.m_packet; i++) {
-        std::vector<size_t> indices(corpus.n_packet);
-        std::iota(indices.begin(), indices.end(), 0);
-
-        size_t n_packet = corpus.n_packet;
-
-        std::partial_sort_copy(
-            indices.begin(), indices.end(),
-            &result.nidx[idx(i, 0, k)], &result.nidx[idx(i, k, k)],
-            [&D, i, n_packet](size_t a, size_t b) {
-                return D[idx(i, a, n_packet)] < D[idx(i, b, n_packet)]; 
-            }
-        );
-
-        // convert y index to global y index
-        for(size_t j = 0; j < k; j++) {
-            result.nidx[idx(i, j, k)] += corpus.y_start_index;
-        }
-
-        for(size_t j = 0; j < k; j++) {
-            size_t jth_nn = result.nidx[idx(i, j, k)] - corpus.y_start_index;
-
-            result.ndist[idx(i, j, k)] = D[idx(i, jth_nn, corpus.n_packet)];
-        }
-    }
-
-    return result;
-}
 
 // it is assumed that the p1.y_end_index == p2.y_start_index
 // for example we combine the k nearest neighbors of x[0:100] in both results
