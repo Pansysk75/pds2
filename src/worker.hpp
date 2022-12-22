@@ -14,7 +14,6 @@ class worker{
     point_set query_set;
 
     point_set receiving_set;
-    point_set sending_set;
 
     worker(unsigned int rank){
         // Initialize slave and receive corpus set
@@ -37,7 +36,7 @@ class worker{
 
             // Start sending the part we just proccessed
             // Start receiving the part we will proccess later
-            cyclic_send_begin(sending_set);
+            cyclic_send_begin(query_set);
             cyclic_receive_begin(receiving_set);
 
 
@@ -50,8 +49,7 @@ class worker{
             cyclic_send_wait();
             cyclic_receive_wait();
 
-            // Exchange data in sets
-            sending_set = std::move(query_set);
+            // Update query_set with received set
             query_set = std::move(receiving_set);
             
         }
