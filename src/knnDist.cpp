@@ -239,3 +239,64 @@ ResultPacket ResultPacket::combineKnnResultsSameY(const ResultPacket& p1, const 
 
     return result;
 } // maybe move one of the ndist and nidx vectors to the other one
+
+// they all share the same Y (which is the whole Y) and collectivly cover the whole X
+static ResultPacket combineKnnResultsAllY(std::vector<ResultPacket> results) {
+    std::vector<size_t> order(results.size());
+    std::iota(order.begin(), order.end(), 0);
+
+    std::sort(order.begin(), order.end(), [&results](size_t i1, size_t i2) {
+        return results[i1].x_start_index < results[i2].x_start_index;
+    });
+
+    // check if everything is okay
+    for(size_t i = 0; i < order.size() - 1; i++) {
+        if(!ResultPacket::yCombinable(results[order[i]], results[order[i+1]])) {
+            throw std::runtime_error("Results are not combinable");
+        }
+    }
+
+    // m = the sum of all m
+    size_t m = 0;
+    for(size_t i = 0; i < order.size(); i++) {
+        m += results[order[i]].m_packet;
+    }
+
+// CHECK CASE WHERE K IS SMALL FOR EDGE CASES
+
+    // k = the k of any result
+    size_t k = results[0].k;
+
+    // x_start_index = the x_start_index of the first result
+    size_t x_start_index = results[order[0]].x_start_index;
+
+    // x_end_index = the x_end_index of the last result
+    size_t x_end_index = results[order[order.size() - 1]].x_end_index;
+
+    // y_start_index = the y_start_index of the any result
+    size_t y_start_index = results[0].y_start_index;
+
+    // x_end_index = the x_end_index of the last result
+    size_t y_end_index = results[0].y_end_index;
+
+    ResultPacket result(m, k, x_start_index, x_end_index, y_start_index, y_end_index);
+
+    size_t m_offset = 0;
+    for(size_t packetNumber = 0; packetNumber < order.size(); packetNumber++) {
+        size_t m_packet = results[order[packetNumber]].m_packet;
+
+        for(size_t i = 0; i < m_packet; i++) {
+            for(size_t j = 0; j < k; j++) {
+                result.nidx[idx(m_offset + i, j, k)] = results[order[packetNumber]].nidx[idx(i, j, k)];
+            }
+        }
+
+        for(size_t i = 0; i < m_packet; i++) {
+            for(size_t j = 0; j < k; j++) {
+                result.nidx[idx(m_offset + i, j, k)] = results[order[packetNumber]].nidx[idx(i, j, k)];
+            }
+        }
+
+        m_offset += m_packet;
+    }
+}

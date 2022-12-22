@@ -86,4 +86,7 @@ struct ResultPacket {
     // for example we combine the k nearest neighbors from y[0:100] in both results
     // the first is the k nearest neighbors of x[0:100] and the second is the k nearest neighbors of x[100:200]
     static ResultPacket combineKnnResultsSameY(const ResultPacket& p1, const ResultPacket& p2);
+
+    // they all share the same Y (which is the whole Y) and collectivly cover the whole X
+    static ResultPacket combineKnnResultsAllY(std::vector<ResultPacket> results);
 };
