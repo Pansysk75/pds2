@@ -33,11 +33,11 @@ QueryPacket::QueryPacket(
 }
 
 ResultPacket::ResultPacket(
-    size_t m_packet, size_t k,
+    size_t m_packet, size_t n_packet, size_t k,
     size_t x_start_index, size_t x_end_index,
     size_t y_start_index, size_t y_end_index
 ) :
-    m_packet(m_packet), k(k),
+    m_packet(m_packet), n_packet(n_packet), k(k),
     x_start_index(x_start_index), x_end_index(x_end_index),
     y_start_index(y_start_index), y_end_index(y_end_index)
 {
@@ -50,7 +50,7 @@ ResultPacket::ResultPacket(
     const CorpusPacket& corpus,
     size_t k
 ) :
-    m_packet(query.m_packet), k(k),
+    m_packet(query.m_packet), n_packet(corpus.n_packet), k(k),
     x_start_index(query.x_start_index), x_end_index(query.x_end_index),
     y_start_index(corpus.y_start_index), y_end_index(corpus.y_end_index)
 {
@@ -143,8 +143,9 @@ ResultPacket::ResultPacket(
 
 // they need to be distances of
 // SAME query points
-// DIFFERENT corpus points  
-bool ResultPacket::xCombinable(ResultPacket const& p1, ResultPacket const& p2) {
+// DIFFERENT corpus points
+bool ResultPacket::combinableSameX(ResultPacket const& p1, ResultPacket const& p2) {
+
     return (
         p1.k == p2.k &&
         p1.m_packet == p2.m_packet &&
@@ -156,7 +157,7 @@ bool ResultPacket::xCombinable(ResultPacket const& p1, ResultPacket const& p2) {
 // they need to be distances of
 // DIFFERENT query points
 // SAME corpus points  
-bool ResultPacket::yCombinable(ResultPacket const& p1, ResultPacket const& p2) {
+bool ResultPacket::combinableSameY(ResultPacket const& p1, ResultPacket const& p2) {
     return (
         p1.k == p2.k &&
         p1.y_start_index == p2.y_start_index && 
@@ -168,17 +169,15 @@ bool ResultPacket::yCombinable(ResultPacket const& p1, ResultPacket const& p2) {
 // it is assumed that the p1.y_end_index == p2.y_start_index
 // for example we combine the k nearest neighbors of x[0:100] in both results
 // but the first is the k nearest neighbors from y[0:100] and the second is the k nearest neighbors from y[100:200]
+// another case is if we have y[600:700], (where 700 == end) and y[0:100]. 
+// The resulting packet will have y_start_index = 600 and y_end_index = 100 (because it wraps around)
 ResultPacket ResultPacket::combineKnnResultsSameX(const ResultPacket& p1, const ResultPacket& p2) {
-    if(!(p1.x_end_index == p2.x_start_index)) {
-        throw std::runtime_error("Cannot combine knn results, y indices are not contiguous");
-    }
-
-    if(!ResultPacket::xCombinable(p1, p2)) {
+    if(!ResultPacket::combinableSameX(p1, p2)) {
         throw std::runtime_error("Cannot combine knn results");
     }
 
     ResultPacket result(
-        p1.m_packet, p1.k,
+        p1.m_packet, p1.n_packet + p2.n_packet, p1.k,
         p1.x_start_index, p2.x_end_index,
         p1.y_start_index, p2.y_end_index
     );
@@ -213,7 +212,7 @@ ResultPacket ResultPacket::combineKnnResultsSameY(const ResultPacket& p1, const 
         throw std::runtime_error("Cannot combine knn results, y indices are not contiguous");
     }
 
-    if(!ResultPacket::yCombinable(p1, p2)) {
+    if(!ResultPacket::combinableSameY(p1, p2)) {
         throw std::runtime_error("Cannot combine knn results");
     }
 
@@ -245,21 +244,23 @@ static ResultPacket combineKnnResultsAllY(std::vector<ResultPacket> results) {
     std::vector<size_t> order(results.size());
     std::iota(order.begin(), order.end(), 0);
 
-    std::sort(order.begin(), order.end(), [&results](size_t i1, size_t i2) {
-        return results[i1].x_start_index < results[i2].x_start_index;
+    std::sort(
+        order.begin(), order.end(),
+        [&results](size_t a, size_t b) {
+        return results[a].x_start_index < results[b].x_start_index;
     });
 
     // check if everything is okay
     for(size_t i = 0; i < order.size() - 1; i++) {
-        if(!ResultPacket::yCombinable(results[order[i]], results[order[i+1]])) {
+        if(!ResultPacket::combinableSameY(results[order[i]], results[order[i+1]])) {
             throw std::runtime_error("Results are not combinable");
         }
     }
 
     // m = the sum of all m
     size_t m = 0;
-    for(size_t i = 0; i < order.size(); i++) {
-        m += results[order[i]].m_packet;
+    for(auto& rp: results) {
+        m += rp.m_packet;
     }
 
 // CHECK CASE WHERE K IS SMALL FOR EDGE CASES
@@ -267,19 +268,23 @@ static ResultPacket combineKnnResultsAllY(std::vector<ResultPacket> results) {
     // k = the k of any result
     size_t k = results[0].k;
 
-    // x_start_index = the x_start_index of the first result
-    size_t x_start_index = results[order[0]].x_start_index;
-
-    // x_end_index = the x_end_index of the last result
-    size_t x_end_index = results[order[order.size() - 1]].x_end_index;
-
-    // y_start_index = the y_start_index of the any result
-    size_t y_start_index = results[0].y_start_index;
-
-    // x_end_index = the x_end_index of the last result
+    // y_end_index = the y_end_index of any result
     size_t y_end_index = results[0].y_end_index;
 
-    ResultPacket result(m, k, x_start_index, x_end_index, y_start_index, y_end_index);
+    ResultPacket result(m, k, 0, m, 0, y_end_index);
+
+    for(auto& rp: results) {
+        if(rp.k != k) {
+            throw std::runtime_error("Cannot combine knn results, k is not the same");
+        }
+
+        for(size_t i = rp.x_start_index; i < rp.x_end_index; i++) {
+            for(size_t j = 0; j < rp.k; j++) {
+                result.ndist[idx(i, j, rp.k)] = rp.ndist[idx(i, j, rp.k)];
+                result.nidx[idx(i, j, rp.k)] = rp.nidx[idx(i, j, rp.k)];
+            }
+        }
+    }
 
     size_t m_offset = 0;
     for(size_t packetNumber = 0; packetNumber < order.size(); packetNumber++) {
@@ -297,6 +302,14 @@ static ResultPacket combineKnnResultsAllY(std::vector<ResultPacket> results) {
             }
         }
 
+        // free up memory as you go
+        results[order[packetNumber]].nidx = std::vector<size_t>(0);
+        results[order[packetNumber]].ndist = std::vector<double>(0);
+
         m_offset += m_packet;
     }
 }
+
+// TODO 
+// COMBINE KNN WITH Y[start:a] AND Y[b:end] (maybe)
+// CHECK CASES WHERE K IS SMALL FOR EDGE CASES or MAKE SURE THAT K IS ALWAYS BIG ENOUGH
