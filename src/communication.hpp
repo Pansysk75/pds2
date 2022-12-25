@@ -2,7 +2,7 @@
 #include <vector>
 
 
-using com_request = MPI_Request;
+using com_request = std::vector<MPI_Request>;
 
 class com_port{
     // Interface to send/receive data
@@ -31,38 +31,37 @@ class com_port{
 
     // Waits for a non-blocking communication to complete
     void wait(com_request request){
-        MPI_Status status;
-        MPI_Wait(&request, &status);
+        for(auto& request_elem : request){
+            MPI_Wait(&request_elem, nullptr);
+        }
     };
 
 };
 
 
-// Sample implementation for int type:
+// Implementation for int type:
 
 template<>
 void com_port::send(int& k, int receiver_rank){
-    MPI_Send(&k, 1, MPI_INT, receiver_rank, 1, MPI_COMM_WORLD);
-    return;
+    MPI_Send(&k, 1, MPI_INT, receiver_rank, 0, MPI_COMM_WORLD);
 }
 
 template<>
 com_request com_port::send_begin(int& k, int receiver_rank){
     MPI_Request request;
-    MPI_Isend(&k, 1, MPI_INT, receiver_rank, 1, MPI_COMM_WORLD, &request);
+    MPI_Isend(&k, 1, MPI_INT, receiver_rank, 0, MPI_COMM_WORLD, &request);
     return com_request{request};
 }
 
 template<>
 void com_port::receive(int& k, int sender_rank){
-    MPI_Status status;
-    MPI_Recv(&k, 1, MPI_INT, sender_rank, 1, MPI_COMM_WORLD, &status);
-    return;
+    MPI_Recv(&k, 1, MPI_INT, sender_rank, 0, MPI_COMM_WORLD, nullptr);
 }
 
 template<>
 com_request com_port::receive_begin(int& k, int sender_rank){
     MPI_Request request;
-    MPI_Irecv(&k, 1, MPI_INT, sender_rank, 1, MPI_COMM_WORLD, &request);
+    MPI_Irecv(&k, 1, MPI_INT, sender_rank, 0, MPI_COMM_WORLD, &request);
     return com_request{request};
 }
+

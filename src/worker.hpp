@@ -4,6 +4,12 @@
 
 class point_set{}; // Placeholder
 
+struct initial_worker_data{
+    // Must be passed to every worker proccess, stores
+    // data that is not known at compile time
+
+};
+
 class worker{
 
     unsigned int rank;
