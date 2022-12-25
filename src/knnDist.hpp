@@ -92,5 +92,5 @@ struct ResultPacket {
     static ResultPacket combineKnnResultsSameY(const ResultPacket& p1, const ResultPacket& p2);
 
     // they all share the same Y (which is the whole Y) and collectivly cover the whole X
-    static ResultPacket combineKnnResultsAllY(std::vector<ResultPacket> results);
+    static ResultPacket combineCompleteQueries(std::vector<ResultPacket> results);
 };

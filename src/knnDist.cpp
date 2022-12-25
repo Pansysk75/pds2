@@ -139,23 +139,25 @@ ResultPacket::ResultPacket(
             ndist[idx(i, j, k)] = D[idx(i, jth_nn, corpus.n_packet)];
         }
     }
+
 }
 
 // they need to be distances of
 // SAME query points
-// DIFFERENT corpus points
-bool ResultPacket::combinableSameX(ResultPacket const& p1, ResultPacket const& p2) {
-
+// DIFFERENT but CONTIGUOUS corpus points
+// Assuming back is ***cyclically*** behind front
+// Meaning back could be [400:600] and front [0:100] if 600 is the end of y points
+bool ResultPacket::combinableSameX(const ResultPacket& back, const ResultPacket& front) {
     return (
-        p1.k == p2.k &&
-        p1.m_packet == p2.m_packet &&
-        p1.x_start_index == p2.x_start_index &&
-        p1.x_end_index == p2.x_end_index
+        back.k == front.k &&
+        back.m_packet == front.m_packet &&
+        back.x_start_index == front.x_start_index &&
+        back.x_end_index == front.x_end_index
     );
 }
 
 // they need to be distances of
-// DIFFERENT query points
+// DIFFERENT but CONTIGUOUS query points
 // SAME corpus points  
 bool ResultPacket::combinableSameY(ResultPacket const& p1, ResultPacket const& p2) {
     return (
@@ -217,7 +219,7 @@ ResultPacket ResultPacket::combineKnnResultsSameY(const ResultPacket& p1, const 
     }
 
     ResultPacket result(
-        p1.m_packet + p2.m_packet, p1.k,
+        p1.m_packet + p2.m_packet, p1.n_packet, p1.k,
         p1.x_start_index, p2.x_end_index,
         p1.y_start_index, p1.y_end_index
     );
@@ -240,7 +242,7 @@ ResultPacket ResultPacket::combineKnnResultsSameY(const ResultPacket& p1, const 
 } // maybe move one of the ndist and nidx vectors to the other one
 
 // they all share the same Y (which is the whole Y) and collectivly cover the whole X
-static ResultPacket combineKnnResultsAllY(std::vector<ResultPacket> results) {
+static ResultPacket combineCompletedQueries(std::vector<ResultPacket> results) {
     std::vector<size_t> order(results.size());
     std::iota(order.begin(), order.end(), 0);
 
@@ -271,7 +273,7 @@ static ResultPacket combineKnnResultsAllY(std::vector<ResultPacket> results) {
     // y_end_index = the y_end_index of any result
     size_t y_end_index = results[0].y_end_index;
 
-    ResultPacket result(m, k, 0, m, 0, y_end_index);
+    ResultPacket result(m, results[0].n_packet, k, 0, m, 0, y_end_index);
 
     for(auto& rp: results) {
         if(rp.k != k) {
