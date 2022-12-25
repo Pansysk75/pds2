@@ -9,8 +9,6 @@
 #include "global_vars.hpp"
 #include "knnDist.hpp"
 
-#define idx(i, j, d) ((i)*(d) + (j))
-
 CorpusPacket::CorpusPacket(
     size_t n_packet, size_t d,
     size_t y_start_index, size_t y_end_index
@@ -32,6 +30,13 @@ CorpusPacket::CorpusPacket(
 {
 }
 
+CorpusPacket::CorpusPacket(CorpusPacket&& other) :
+    n_packet(other.n_packet), d(other.d),
+    y_start_index(other.y_start_index), y_end_index(other.y_end_index),
+    Y(std::move(other.Y))
+{
+}
+
 QueryPacket::QueryPacket(
     size_t m_packet, size_t d,
     size_t x_start_index, size_t x_end_index
@@ -41,6 +46,14 @@ QueryPacket::QueryPacket(
 {
     X = std::vector<double>(m_packet * d);
 }
+/*
+QueryPacket::QueryPacket(QueryPacket&& other) :
+    m_packet(other.m_packet), d(other.d),
+    x_start_index(other.x_start_index), x_end_index(other.x_end_index),
+    X(std::move(other.X))
+{
+}
+*/
 
 QueryPacket::QueryPacket(
     size_t m_packet, size_t d,
@@ -64,6 +77,27 @@ ResultPacket::ResultPacket(
 {
     nidx = std::vector<size_t>(m_packet * this->k);
     ndist = std::vector<double>(m_packet * this->k);
+}
+
+ResultPacket::ResultPacket(const ResultPacket& other) :
+    m_packet(other.m_packet), n_packet(other.n_packet), k(other.k),
+    x_start_index(other.x_start_index), x_end_index(other.x_end_index),
+    y_start_index(other.y_start_index), y_end_index(other.y_end_index),
+    nidx(other.nidx), ndist(other.ndist)
+{
+}
+
+ResultPacket& ResultPacket::operator=(ResultPacket&& other){
+    m_packet = other.m_packet;
+    n_packet = other.n_packet;
+    k = other.k;
+    x_start_index = other.x_start_index;
+    x_end_index = other.x_end_index;
+    y_start_index = other.y_start_index;
+    y_end_index = other.y_end_index;
+    nidx = std::move(other.nidx);
+    ndist = std::move(other.ndist);
+    return *this;
 }
 
 ResultPacket::ResultPacket(
@@ -97,26 +131,7 @@ ResultPacket::ResultPacket(
 
     std::vector<double> D(query.m_packet * corpus.n_packet);
 
-/* ALTERNATIVELY POSSIBLY FASTER
-    cblas_dgemm(
-        CblasRowMajor, CblasNoTrans, CblasTrans,
-        query.m_packet, corpus.n_packet, corpus.d,
-        -2.0,
-        query.X.data(), query.d,
-        corpus.Y.data(), corpus.d,
-        0.0,
-        D.data(), corpus.n_packet
-    );
-
-    for(size_t i = 0; i < query.m_packet; i++){
-        // maybe cache X2_i
-        // X2_i = X2[i];
-        for(size_t j = 0; j < corpus.n_packet; j++){
-            D[idx(i, j, corpus.n_packet)] += X2[i] + Y2[j];
-        }
-    }
-
-*/
+    // Dij = x_i^2 + y_j^2
     for(size_t i = 0; i < query.m_packet; i++){
         // maybe cache X2_i
         // X2_i = X2[i];
@@ -125,6 +140,7 @@ ResultPacket::ResultPacket(
         }
     }
 
+    // Dij += -2 * x_i * y_j
     cblas_dgemm(
         CblasRowMajor, CblasNoTrans, CblasTrans,
         query.m_packet, corpus.n_packet, corpus.d,
@@ -191,9 +207,11 @@ std::tuple<bool, size_t, size_t> ResultPacket::combinableSameX(const ResultPacke
 // SAME corpus points  
 std::tuple<bool, size_t, size_t> ResultPacket::combinableSameY(ResultPacket const& back, ResultPacket const& front) {
     bool combinable = (
-        back.k == front.k &&
-        back.y_start_index == front.y_start_index && 
-        back.y_end_index == front.y_end_index
+        (back.k == front.k) && (
+        (back.y_start_index == front.y_start_index && 
+        back.y_end_index == front.y_end_index) ||
+        (back.y_end_index - back.y_start_index == 0 ||
+        front.y_end_index - front.y_start_index == 0))
     );
 
     if (combinable) {
@@ -210,6 +228,9 @@ std::tuple<bool, size_t, size_t> ResultPacket::combinableSameY(ResultPacket cons
 // another case is if we have y[600:700], (where 700 == end) and y[0:100]. 
 // The resulting packet will have y_start_index = 600 and y_end_index = 100 (because it wraps around)
 ResultPacket ResultPacket::combineKnnResultsSameX(const ResultPacket& back, const ResultPacket& front) {
+
+    if(back.k == 0 && back.m_packet == 0) return front;
+
     const auto [combinable, res_y_start_index, res_y_end_index] = ResultPacket::combinableSameX(back, front);
     if(!combinable) {
         throw std::runtime_error("Cannot combine knn results");
@@ -286,7 +307,7 @@ ResultPacket ResultPacket::combineKnnResultsSameY(const ResultPacket& p1, const 
 */
 
 // they all share the same Y (which is the whole Y) and collectivly cover the whole X
-static ResultPacket combineCompleteQueries(std::vector<ResultPacket> results) {
+ResultPacket ResultPacket::combineCompleteQueries(std::vector<ResultPacket>& results) {
     std::vector<size_t> order(results.size());
     std::iota(order.begin(), order.end(), 0);
 
@@ -298,8 +319,13 @@ static ResultPacket combineCompleteQueries(std::vector<ResultPacket> results) {
 
     // check if everything is okay
     for(size_t i = 0, current_end = 0; i < order.size() - 1; i++) {
-        const auto [combinable, y_start_index, y_end_index] =
+        const auto [combinable, res_y_start_index, res_y_end_index] =
             ResultPacket::combinableSameY(results[order[i]], results[order[i+1]]);
+
+        if(current_end != results[order[i]].y_start_index) {
+            throw std::runtime_error("There are gaps in the results");
+            current_end = results[order[i]].y_end_index;
+        }
 
         if(!combinable) {
             throw std::runtime_error("Results are not combinable");
@@ -357,6 +383,8 @@ static ResultPacket combineCompleteQueries(std::vector<ResultPacket> results) {
 
         m_offset += m_packet;
     }
+
+    return result;
 }
 
 // TODO 

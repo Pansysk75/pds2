@@ -5,8 +5,7 @@
 #include "knnDist.hpp"
 #include "testingknn.hpp"
 #include "fileio.hpp"
-
-#define idx(i, j, ld) (((i)*(ld))+(j))
+#include "global_vars.hpp"
 
 // RowMajor 3d grid up to SxSxS
 // m is query points
@@ -77,9 +76,85 @@ std::tuple<QueryPacket, CorpusPacket> random_grid(size_t m, size_t n, size_t d, 
     );
 }
 
+std::tuple<QueryPacket, CorpusPacket> file_packets(
+    const std::string& query_path, const size_t m,
+    const std::string& corpus_path, const size_t n,
+    const size_t d
+) {
+    std::vector<double> X = load_csv<double>(query_path, m);
+
+    std::vector<double> Y = load_csv<double>(corpus_path, n);
+
+    return std::make_tuple(
+        QueryPacket(m, d, 0, m, std::move(X)),
+        CorpusPacket(n, d, 0, n, std::move(Y))
+    );
+}
+
+ResultPacket SyskoSimulation(
+    const QueryPacket& query, const CorpusPacket& corpus, size_t k,
+    const size_t num_batches_x, const size_t num_batches_y
+) {
+    std::vector<ResultPacket> diffProcRes;
+    diffProcRes.reserve(num_batches_x);
+
+    size_t batch_size_x = query.m_packet / num_batches_x;
+    size_t batch_size_y = corpus.n_packet / num_batches_y;
+
+    // different proccesses
+    for(size_t p_id = 0; p_id < num_batches_x; p_id++){
+        size_t x_start_index = p_id * batch_size_x;
+        size_t x_end_index = p_id == num_batches - 1 ? query.x_end_index : (p_id + 1) * batch_size_x;
+
+        QueryPacket proc_X = QueryPacket(
+            batch_size_x, query.d,
+            x_start_index, x_end_index,
+            std::vector<double>(query.X.begin() + x_start_index * query.d, query.X.begin() + x_end_index * query.d)
+        );
+
+        ResultPacket proc_res = ResultPacket(
+            0, 0, 0, 0, 0, 0, 0
+        );
+
+        // different execution batches, each begins in a different stage
+        // for example stage 0 could be y[0:100]
+        // stage 1 y[100:200] etc
+        // they cycle through all the stages
+        for(size_t stage = p_id, iters = 0; iters < num_batches_y; iters++, stage = (stage + 1)%num_batches_y){
+            size_t y_start_index = stage * batch_size_y;
+            size_t y_end_index = stage == num_batches - 1 ? corpus.y_end_index : (stage + 1) * batch_size_y;
+
+            CorpusPacket proc_Y = CorpusPacket(
+                batch_size_y, corpus.d,
+                y_start_index, y_end_index,
+                std::vector<double>(corpus.Y.begin() + y_start_index * corpus.d, corpus.Y.begin() + y_end_index * corpus.d)
+            );
+
+            ResultPacket batch_res(proc_X, proc_Y, k);
+            proc_res = ResultPacket::combineKnnResultsSameX(proc_res, batch_res);
+        }
+        
+        diffProcRes.push_back(std::move(proc_res));
+    }
+
+    return ResultPacket::combineCompleteQueries(diffProcRes);
+}
+
 ResultPacket runData(const QueryPacket& query, const CorpusPacket& corpus, size_t k) {
     auto start = std::chrono::high_resolution_clock::now();
     ResultPacket result(query, corpus, k);
+    auto end = std::chrono::high_resolution_clock::now();
+
+    std::chrono::duration<double> elapsed = end - start;
+
+    std::cout << "Elapsed time: " << elapsed.count() << " s" << std::endl;
+
+    return result;
+}
+
+ResultPacket runDistrData(const QueryPacket& query, const CorpusPacket& corpus, size_t k, size_t num_batches_x, size_t num_batches_y) {
+    auto start = std::chrono::high_resolution_clock::now();
+    ResultPacket result = SyskoSimulation(query, corpus, k, num_batches_x, num_batches_y);
     auto end = std::chrono::high_resolution_clock::now();
 
     std::chrono::duration<double> elapsed = end - start;

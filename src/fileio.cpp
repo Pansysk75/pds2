@@ -49,5 +49,6 @@ std::vector<T> load_csv(const std::string& filename, const size_t upper_limit)
 // instanciate the template for common numeric types
 
 template std::vector<int> load_csv<int>(const std::string& filename, const size_t upper_limit);
+template std::vector<size_t> load_csv<size_t>(const std::string& filename, const size_t upper_limit);
 template std::vector<float> load_csv<float>(const std::string& filename, const size_t upper_limit);
 template std::vector<double> load_csv<double>(const std::string& filename, const size_t upper_limit);

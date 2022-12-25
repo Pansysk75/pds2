@@ -1,6 +1,7 @@
 #include <iostream>
 #include <algorithm>
 #include <vector>
+#include <queue>
 #include <chrono>
 #include <string>
 #include <random>
@@ -10,10 +11,9 @@
 #include "testingknn.hpp"
 #include "fileio.hpp"
 
-#define idx(i, j, ld) (((i)*(ld))+(j))
 void print_results(const QueryPacket& query, const CorpusPacket& corpus, size_t k) {
 
-    ResultPacket result = runData(query, corpus, k);
+    ResultPacket result = runDistrData(query, corpus, k, 2, 2);
 
     // Print the results
     for (size_t i = 0; i < std::min(result.m_packet, (size_t)5); i++)
@@ -40,6 +40,7 @@ void print_results(const QueryPacket& query, const CorpusPacket& corpus, size_t 
 }
 
 
+
 int main(int argc, char** argv)
 {
     // Sample input values
@@ -62,7 +63,7 @@ int main(int argc, char** argv)
         size_t d = std::stoi(argv[3]);
         size_t m = std::stoi(argv[4]);
 
-        bool debug = std::stoi(argv[6]) == 1;
+        debug = std::stoi(argv[5]) == 1;
 
         const auto [query, corpus, k] = regual_grid(s, d, m);
 
@@ -77,6 +78,21 @@ int main(int argc, char** argv)
 
         // set the query and corpus objects to the result of random_grid
         const auto [query, corpus] = random_grid(m, n, d, k);
+
+        print_results(query, corpus, k);
+    } else if (std::string(argv[1]) == "file") {
+        std::string query_path = argv[2];
+        size_t m = std::stoi(argv[3]);
+
+        std::string corpus_path = argv[4];
+        size_t n = std::stoi(argv[5]);
+
+        size_t d = std::stoi(argv[6]);
+        size_t k = std::stoi(argv[7]);
+
+        debug = std::stoi(argv[8]) == 1;
+
+        const auto [query, corpus] = file_packets(query_path, m, corpus_path, n, d);
 
         print_results(query, corpus, k);
     } else {
