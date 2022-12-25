@@ -1,7 +1,8 @@
 #include <random>
 #include <chrono>
+#include <tuple>
 
-#include "knn.hpp"
+#include "knnDist.hpp"
 #include "testingknn.hpp"
 #include "fileio.hpp"
 
@@ -9,7 +10,7 @@
 
 // RowMajor 3d grid up to SxSxS
 // m is query points
-knnTestData regual_grid(size_t s, size_t d, size_t m) {
+std::tuple<QueryPacket, CorpusPacket, size_t> regual_grid(size_t s, size_t d, size_t m) {
     // Corpus points
     size_t n = 1;
     for(size_t _ = 0; _ < d; _++) {
@@ -41,10 +42,15 @@ knnTestData regual_grid(size_t s, size_t d, size_t m) {
     for(size_t i = 0; i < d; i++){
         k *= 3;
     }
-    return { std::move(X), std::move(Y), m, n, d, k };
+
+    return std::make_tuple(
+        QueryPacket(m, d, 0, m, std::move(X)),
+        CorpusPacket(n, d, 0, n, std::move(Y)),
+        k
+    );
 }
 
-knnTestData random_grid(size_t m, size_t n, size_t d, size_t k) {
+std::tuple<QueryPacket, CorpusPacket> random_grid(size_t m, size_t n, size_t d, size_t k) {
     size_t s = 1000;
 
     std::vector<double> Y(n*d);
@@ -65,13 +71,15 @@ knnTestData random_grid(size_t m, size_t n, size_t d, size_t k) {
             X[idx(i, comp, d)] = Y[idx(y_choice, comp, d)];
     }
 
-    return { std::move(X), std::move(Y), m, n, d, k };
+    return std::make_tuple(
+        QueryPacket(m, d, 0, m, std::move(X)),
+        CorpusPacket(n, d, 0, n, std::move(Y))
+    );
 }
 
-knnresult runData(const std::vector<double>& X, const std::vector<double>& Y, const size_t m, const size_t n, const size_t d, const size_t k) {
+ResultPacket runData(const QueryPacket& query, const CorpusPacket& corpus, size_t k) {
     auto start = std::chrono::high_resolution_clock::now();
-    size_t _k = k;
-    knnresult result = knnSerial(X, Y, m, n, d, _k);
+    ResultPacket result(query, corpus, k);
     auto end = std::chrono::high_resolution_clock::now();
 
     std::chrono::duration<double> elapsed = end - start;
@@ -79,8 +87,4 @@ knnresult runData(const std::vector<double>& X, const std::vector<double>& Y, co
     std::cout << "Elapsed time: " << elapsed.count() << " s" << std::endl;
 
     return result;
-}
-
-knnresult runData(const knnTestData& data) {
-    return runData(data.X, data.Y, data.m, data.n, data.d, data.k);
 }

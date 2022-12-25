@@ -3,15 +3,42 @@
 #include <vector>
 #include <chrono>
 #include <string>
-#include <cblas.h>
 #include <random>
 
 #include "global_vars.hpp"
-#include "knn.hpp"
+#include "knnDist.hpp"
 #include "testingknn.hpp"
 #include "fileio.hpp"
 
 #define idx(i, j, ld) (((i)*(ld))+(j))
+void print_results(const QueryPacket& query, const CorpusPacket& corpus, size_t k) {
+
+    ResultPacket result = runData(query, corpus, k);
+
+    // Print the results
+    for (size_t i = 0; i < std::min(result.m_packet, (size_t)5); i++)
+    {
+        std::cout << "Nearest neighbors of point ";
+        for (size_t j = 0; j < query.d; j++)
+        {
+            //std::cout << query.X[idx(i, j, query.d)] << " ";
+        }
+        std::cout << "are:" << std::endl;
+
+        for (size_t j = 0; j < std::min(result.k, (size_t)3); j++)
+        {
+            double diff = 0;
+            for(size_t comp = 0; comp < query.d; comp++){
+                diff += std::abs(query.X[idx(i, comp, query.d)] - corpus.Y[idx(result.nidx[idx(i, j, result.k)],comp , corpus.d)]);
+                //std::cout << corpus.Y[idx(result.nidx[idx(i, j, result.k)],comp , corpus.d)] << " ";
+            }
+            std::cout << std::endl;
+            std::cout << "diff: " << diff << std::endl;
+        }
+        std::cout << std::endl;
+    }
+}
+
 
 int main(int argc, char** argv)
 {
@@ -29,51 +56,33 @@ int main(int argc, char** argv)
 
     size_t k = 1;
 */
+    // if first arg is 'regular' then use regular grid
+    if(std::string(argv[1]) == "regular") {
+        size_t s = std::stoi(argv[2]);
+        size_t d = std::stoi(argv[3]);
+        size_t m = std::stoi(argv[4]);
 
-    size_t m = std::stoi(argv[1]);
-    size_t n = std::stoi(argv[2]);
-    size_t d = std::stoi(argv[3]);
-    size_t k = std::stoi(argv[4]);
-    num_batches = std::stoi(argv[5]);
+        bool debug = std::stoi(argv[6]) == 1;
 
-    debug = std::stoi(argv[6]) == 1;
-    knnTestData knnData = random_grid(m, n, d, k);
+        const auto [query, corpus, k] = regual_grid(s, d, m);
 
-/*
-    size_t s = std::stoi(argv[1]);
-    size_t d = std::stoi(argv[2]);
-    size_t m = std::stoi(argv[3]);
+        print_results(query, corpus, k);
+    } else if (std::string(argv[1]) == "random") {
+        size_t m = std::stoi(argv[2]);
+        size_t n = std::stoi(argv[3]);
+        size_t d = std::stoi(argv[4]);
+        size_t k = std::stoi(argv[5]);
 
-    debug = std::stoi(argv[4]) == 1;
+        debug = std::stoi(argv[6]) == 1;
 
-    knnTestData knnData = regual_grid(s, d, m);
-*/
+        // set the query and corpus objects to the result of random_grid
+        const auto [query, corpus] = random_grid(m, n, d, k);
 
-    knnresult result = runData(knnData);
-
-    // Print the results
-    for (size_t i = 0; i < std::min(result.m, (size_t)1); i++)
-    {
-        std::cout << "Nearest neighbors of point ";
-        for (size_t j = 0; j < knnData.d; j++)
-        {
-            std::cout << knnData.X[idx(i, j, knnData.d)] << " ";
-        }
-        std::cout << "are:" << std::endl;
-
-        for (size_t j = 0; j < std::min(result.k, (size_t)3); j++)
-        {
-            double diff = 0;
-            for(size_t comp = 0; comp < knnData.d; comp++){
-                diff += std::abs(knnData.X[idx(i, comp, knnData.d)] - knnData.Y[idx(result.nidx[idx(i, j, result.k)],comp , knnData.d)]);
-                //std::cout << knnData.Y[idx(result.nidx[idx(i, j, result.k)],comp , knnData.d)] << " ";
-            }
-            std::cout << std::endl;
-            std::cout << "diff: " << diff << std::endl;
-        }
-        std::cout << std::endl;
+        print_results(query, corpus, k);
+    } else {
+        std::cout << "Invalid input" << std::endl;
+        return 1;
     }
 
     return 0;
 }
-

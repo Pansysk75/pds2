@@ -1,14 +1,14 @@
 CC=g++
 
-OPT = -O0
+OPT = -O3
 DEB = -g
 
 CFLAGS = -Wall $(DEB) $(OPT) -std=c++20
 LFLAGS = -Wall $(DEB) $(OPT) -std=c++20
 LIBS = -lblas
 
-DEPS = knn.hpp fileio.hpp testingknn.hpp global_vars.hpp
-OBJ = fileio.o knn.o testingknn.o main.o global_vars.o
+DEPS = knnDist.hpp fileio.hpp testingknn.hpp global_vars.hpp
+OBJ = fileio.o knnDist.o testingknn.o main.o global_vars.o
 
 %.o: %.cpp $(DEPS)
 	$(CC) -c $< -o $@ $(CFLAGS) $(LIBS)
