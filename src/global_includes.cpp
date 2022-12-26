@@ -1,4 +1,4 @@
-#include "global_vars.hpp"
+#include "global_includes.hpp"
 
 bool magic = true;
 bool debug = false;

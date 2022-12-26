@@ -6,7 +6,7 @@
 #include <string>
 #include <random>
 
-#include "global_vars.hpp"
+#include "global_includes.hpp"
 #include "knnDist.hpp"
 #include "testingknn.hpp"
 #include "fileio.hpp"
@@ -16,7 +16,7 @@ void print_results(const QueryPacket& query, const CorpusPacket& corpus, size_t 
     ResultPacket result = runDistrData(query, corpus, k, 2, 2);
 
     // Print the results
-    for (size_t i = 0; i < std::min(result.m_packet, (size_t)5); i++)
+    for (size_t i = 0; i < std::min(result.m_packet, (size_t)1); i++)
     {
         std::cout << "Nearest neighbors of point ";
         for (size_t j = 0; j < query.d; j++)
@@ -25,7 +25,7 @@ void print_results(const QueryPacket& query, const CorpusPacket& corpus, size_t 
         }
         std::cout << "are:" << std::endl;
 
-        for (size_t j = 0; j < std::min(result.k, (size_t)3); j++)
+        for (size_t j = 0; j < std::min(result.k, (size_t)1); j++)
         {
             double diff = 0;
             for(size_t comp = 0; comp < query.d; comp++){

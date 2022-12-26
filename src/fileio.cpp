@@ -10,6 +10,7 @@
 #define NO_COLOR -1
 
 #include "fileio.hpp"
+#include "global_includes.hpp"
 
 template <typename T>
 std::vector<T> load_csv(const std::string& filename, const size_t upper_limit)

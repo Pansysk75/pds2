@@ -1,11 +1,12 @@
 #include <random>
 #include <chrono>
 #include <tuple>
+#include <omp.h>
 
 #include "knnDist.hpp"
 #include "testingknn.hpp"
 #include "fileio.hpp"
-#include "global_vars.hpp"
+#include "global_includes.hpp"
 
 // RowMajor 3d grid up to SxSxS
 // m is query points
@@ -95,6 +96,7 @@ ResultPacket SyskoSimulation(
     const QueryPacket& query, const CorpusPacket& corpus, size_t k,
     const size_t num_batches_x, const size_t num_batches_y
 ) {
+
     std::vector<ResultPacket> diffProcRes;
     diffProcRes.reserve(num_batches_x);
 
@@ -109,7 +111,7 @@ ResultPacket SyskoSimulation(
         QueryPacket proc_X = QueryPacket(
             batch_size_x, query.d,
             x_start_index, x_end_index,
-            std::vector<double>(query.X.begin() + x_start_index * query.d, query.X.begin() + x_end_index * query.d)
+            std::vector<double>(&query.X[idx(x_start_index, 0, query.d)], &query.X[idx(x_end_index, 0, query.d)])
         );
 
         ResultPacket proc_res = ResultPacket(
@@ -127,13 +129,13 @@ ResultPacket SyskoSimulation(
             CorpusPacket proc_Y = CorpusPacket(
                 batch_size_y, corpus.d,
                 y_start_index, y_end_index,
-                std::vector<double>(corpus.Y.begin() + y_start_index * corpus.d, corpus.Y.begin() + y_end_index * corpus.d)
+                std::vector<double>(&corpus.Y[idx(y_start_index, 0, corpus.d)], &corpus.Y[idx(y_end_index, 0, corpus.d)])
             );
 
             ResultPacket batch_res(proc_X, proc_Y, k);
             proc_res = ResultPacket::combineKnnResultsSameX(proc_res, batch_res);
         }
-        
+
         diffProcRes.push_back(std::move(proc_res));
     }
 

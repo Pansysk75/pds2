@@ -6,7 +6,7 @@
 
 #include <cblas.h>
 
-#include "global_vars.hpp"
+#include "global_includes.hpp"
 #include "knnDist.hpp"
 
 CorpusPacket::CorpusPacket(
@@ -124,8 +124,8 @@ ResultPacket::ResultPacket(
     for(size_t i = 0; i < corpus.n_packet; i++){
         Y2[i] = cblas_ddot(
             d,
-            &corpus.Y[idx(i, 0, corpus.d)], 1,
-            &corpus.Y[idx(i, 0, corpus.d)], 1
+            &corpus.Y[idx(i, 0, d)], 1,
+            &corpus.Y[idx(i, 0, d)], 1
         );
     }
 
@@ -136,7 +136,7 @@ ResultPacket::ResultPacket(
         // maybe cache X2_i
         // X2_i = X2[i];
         for(size_t j = 0; j < corpus.n_packet; j++){
-        D[idx(i, j, corpus.n_packet)] = X2[i] + Y2[j];
+            D[idx(i, j, corpus.n_packet)] = X2[i] + Y2[j];
         }
     }
 
@@ -307,86 +307,60 @@ ResultPacket ResultPacket::combineKnnResultsSameY(const ResultPacket& p1, const 
 */
 
 // they all share the same Y (which is the whole Y) and collectivly cover the whole X
-ResultPacket ResultPacket::combineCompleteQueries(std::vector<ResultPacket>& results) {
-    std::vector<size_t> order(results.size());
+ResultPacket ResultPacket::combineCompleteQueries(std::vector<ResultPacket>& completeResults) {
+    std::vector<size_t> order(completeResults.size());
     std::iota(order.begin(), order.end(), 0);
 
+    // indices of elements in order
     std::sort(
         order.begin(), order.end(),
-        [&results](size_t a, size_t b) {
-        return results[a].x_start_index < results[b].x_start_index;
+        [&completeResults](size_t a, size_t b) {
+        return completeResults[a].x_start_index < completeResults[b].x_start_index;
     });
 
-    // check if everything is okay
-    for(size_t i = 0, current_end = 0; i < order.size() - 1; i++) {
-        const auto [combinable, res_y_start_index, res_y_end_index] =
-            ResultPacket::combinableSameY(results[order[i]], results[order[i+1]]);
 
-        if(current_end != results[order[i]].y_start_index) {
+    for(size_t i = 0; i < order.size() - 1; i++) {
+        const auto& back = completeResults[order[i]];
+        const auto& front = completeResults[order[i + 1]];
+
+        if(back.x_end_index != front.x_start_index) {
             throw std::runtime_error("There are gaps in the results");
-            current_end = results[order[i]].y_end_index;
         }
+
+        const auto [combinable, _, __] = ResultPacket::combinableSameY(back, front);
 
         if(!combinable) {
             throw std::runtime_error("Results are not combinable");
-        }  
+        }
     }
 
-    // m = the sum of all m
     size_t m = 0;
-    for(auto& rp: results) {
+    for(auto& rp: completeResults) {
         m += rp.m_packet;
     }
 
-// CHECK CASE WHERE K IS SMALL FOR EDGE CASES
-
     // k = the k of any result
-    size_t k = results[0].k;
+    size_t k = completeResults[0].k;
 
     // y_end_index = the y_end_index of any result
-    size_t y_end_index = results[0].y_end_index;
+    size_t y_end_index = completeResults[0].y_end_index;
 
-    ResultPacket result(m, results[0].n_packet, k, 0, m, 0, y_end_index);
-
-    for(auto& rp: results) {
-        if(rp.k != k) {
-            throw std::runtime_error("Cannot combine knn results, k is not the same");
-        }
-
-        for(size_t i = rp.x_start_index; i < rp.x_end_index; i++) {
-            for(size_t j = 0; j < rp.k; j++) {
-                result.ndist[idx(i, j, rp.k)] = rp.ndist[idx(i, j, rp.k)];
-                result.nidx[idx(i, j, rp.k)] = rp.nidx[idx(i, j, rp.k)];
-            }
-        }
-    }
+    ResultPacket result(m, completeResults[0].n_packet, k, 0, m, 0, y_end_index);
 
     size_t m_offset = 0;
-    for(size_t packetNumber = 0; packetNumber < order.size(); packetNumber++) {
-        size_t m_packet = results[order[packetNumber]].m_packet;
+    for(size_t packet = 0; packet < completeResults.size(); packet++) {
+        auto& rp = completeResults[order[packet]];
 
-        for(size_t i = 0; i < m_packet; i++) {
-            for(size_t j = 0; j < k; j++) {
-                result.nidx[idx(m_offset + i, j, k)] = results[order[packetNumber]].nidx[idx(i, j, k)];
-            }
-        }
+        for(size_t i = 0; i < rp.m_packet; i++)
+            std::copy(&rp.ndist[idx(i, 0, k)], &rp.ndist[idx(i, k, k)], &result.ndist[idx(i + m_offset, 0, k)]);
+        for(size_t i = 0; i < rp.m_packet; i++)
+            std::copy(&rp.nidx[idx(i, 0, k)], &rp.nidx[idx(i, k, k)], &result.nidx[idx(i + m_offset, 0, k)]);
 
-        for(size_t i = 0; i < m_packet; i++) {
-            for(size_t j = 0; j < k; j++) {
-                result.nidx[idx(m_offset + i, j, k)] = results[order[packetNumber]].nidx[idx(i, j, k)];
-            }
-        }
+        rp.ndist = std::vector<double>();
+        rp.nidx = std::vector<size_t>();
 
-        // free up memory as you go
-        results[order[packetNumber]].nidx = std::vector<size_t>(0);
-        results[order[packetNumber]].ndist = std::vector<double>(0);
-
-        m_offset += m_packet;
+        m_offset += rp.m_packet;
     }
 
     return result;
 }
-
-// TODO 
-// COMBINE KNN WITH Y[start:a] AND Y[b:end] (maybe)
-// CHECK CASES WHERE K IS SMALL FOR EDGE CASES or MAKE SURE THAT K IS ALWAYS BIG ENOUGH
