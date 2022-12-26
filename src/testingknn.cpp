@@ -106,7 +106,7 @@ ResultPacket SyskoSimulation(
     // different proccesses
     for(size_t p_id = 0; p_id < num_batches_x; p_id++){
         size_t x_start_index = p_id * batch_size_x;
-        size_t x_end_index = p_id == num_batches - 1 ? query.x_end_index : (p_id + 1) * batch_size_x;
+        size_t x_end_index = p_id == num_batches_x - 1 ? query.x_end_index : (p_id + 1) * batch_size_x;
 
         QueryPacket proc_X = QueryPacket(
             batch_size_x, query.d,
@@ -122,9 +122,10 @@ ResultPacket SyskoSimulation(
         // for example stage 0 could be y[0:100]
         // stage 1 y[100:200] etc
         // they cycle through all the stages
-        for(size_t stage = p_id, iters = 0; iters < num_batches_y; iters++, stage = (stage + 1)%num_batches_y){
+        for(size_t stage = p_id, iters = 0; iters < num_batches_y; iters++){
+            stage = (stage + 1)%num_batches_y;
             size_t y_start_index = stage * batch_size_y;
-            size_t y_end_index = stage == num_batches - 1 ? corpus.y_end_index : (stage + 1) * batch_size_y;
+            size_t y_end_index = stage == num_batches_y - 1 ? corpus.y_end_index : (stage + 1) * batch_size_y;
 
             CorpusPacket proc_Y = CorpusPacket(
                 batch_size_y, corpus.d,

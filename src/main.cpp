@@ -13,7 +13,7 @@
 
 void print_results(const QueryPacket& query, const CorpusPacket& corpus, size_t k) {
 
-    ResultPacket result = runDistrData(query, corpus, k, 2, 2);
+    ResultPacket result = runDistrData(query, corpus, k, 12, 12);
 
     // Print the results
     for (size_t i = 0; i < std::min(result.m_packet, (size_t)1); i++)
@@ -57,7 +57,6 @@ int main(int argc, char** argv)
 
     size_t k = 1;
 */
-    // if first arg is 'regular' then use regular grid
     if(std::string(argv[1]) == "regular") {
         size_t s = std::stoi(argv[2]);
         size_t d = std::stoi(argv[3]);
@@ -76,7 +75,6 @@ int main(int argc, char** argv)
 
         debug = std::stoi(argv[6]) == 1;
 
-        // set the query and corpus objects to the result of random_grid
         const auto [query, corpus] = random_grid(m, n, d, k);
 
         print_results(query, corpus, k);
