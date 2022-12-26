@@ -1,3 +1,4 @@
+#pragma once
 #include <mpi/mpi.h>
 #include <vector>
 
@@ -6,12 +7,24 @@ using com_request = std::vector<MPI_Request>;
 
 class com_port{
     // Interface to send/receive data
+    // NOTE: Currently does not work for sending/receiving multiple
+    // objects simultaniously (one send and one receive at the same
+    // time works).
 
-    // Haven't yet decided on how to implement this
-    // We can probably get away with only implementing these
-    // to work with one type (the one that describes a collection of k-dimensional points)
+    int _rank; // Rank(==id) of proccess where this com_port is created.
+    int _world_size; // Number of processes we can communicate with.
 
-    public:
+public:
+    // Constructor
+    com_port(int rank, int world_size){ 
+        _rank = rank; 
+        _world_size = world_size;
+    }
+
+    int rank() const { return _rank; }
+    int world_size() const {return _world_size;}
+
+    // Expose sending/receiving interface:
 
     // Blocking receive
     template <typename T>
@@ -39,7 +52,8 @@ class com_port{
 };
 
 
-// Implementation for int type:
+
+// Implementation for int:
 
 template<>
 void com_port::send(int& k, int receiver_rank){
@@ -65,3 +79,32 @@ com_request com_port::receive_begin(int& k, int sender_rank){
     return com_request{request};
 }
 
+
+
+// Implementation for std::vector<double>
+
+template<>
+void com_port::send(std::vector<double>& vec, int receiver_rank){
+    MPI_Send(vec.data(), vec.size(), MPI_DOUBLE, receiver_rank, 0, MPI_COMM_WORLD);
+}
+
+template<>
+com_request com_port::send_begin(std::vector<double>& vec, int receiver_rank){
+    com_request requests(1);
+    MPI_Isend(vec.data(), vec.size(), MPI_DOUBLE, receiver_rank, 0, MPI_COMM_WORLD, &requests[0]);
+    return requests;
+}
+
+template<>
+void com_port::receive(std::vector<double>& vec, int sender_rank){
+    // Assume that c.data memory has already been initialized
+    MPI_Recv(vec.data(), vec.size(), MPI_DOUBLE, sender_rank, 0, MPI_COMM_WORLD, nullptr);
+}
+
+template<>
+com_request com_port::receive_begin(std::vector<double>& vec, int sender_rank){
+    // Assume that c.data memory has already been initialized
+    com_request requests(1);
+    MPI_Irecv(vec.data(), vec.size(), MPI_DOUBLE, sender_rank, 0, MPI_COMM_WORLD, &requests[0]);
+    return com_request{requests};
+}

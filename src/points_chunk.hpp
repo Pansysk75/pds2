@@ -1,3 +1,4 @@
+#pragma once
 #include <vector>
 #include "communication.hpp"
 
@@ -10,11 +11,17 @@ struct points_chunk{
     int idx_start;
     int idx_end;
 
+    // Default constructor
+    points_chunk(){}
+
+    // Constructor to initialize with allocated size
     points_chunk(int size, int idx_start, int idx_end)
     :size(size), idx_start(idx_start), idx_end(idx_end)
     {
         data.resize(size);
     }
+
+    // Constructor to move a vector into this
     points_chunk(std::vector<double>&& vec,int size, int idx_start, int idx_end)
         :size(size), idx_start(idx_start), idx_end(idx_end)
     {
@@ -26,10 +33,14 @@ struct points_chunk{
         for(auto& elem : data){
             str += std::to_string(elem) + " ";
         }
-       str += " | size=" + std::to_string(size) + " | idx_start=" + std::to_string(idx_start) + " | idx_end=" + std::to_string(idx_end);
+       str += "| size=" + std::to_string(size) + " | idx_start=" + std::to_string(idx_start) + " | idx_end=" + std::to_string(idx_end);
        return str;
     }
 };
+
+
+
+// Implementations for send/receive
 
 template<>
 void com_port::send(points_chunk& c, int receiver_rank){
@@ -51,7 +62,7 @@ com_request com_port::send_begin(points_chunk& c, int receiver_rank){
 
 template<>
 void com_port::receive(points_chunk& c, int sender_rank){
-    // lets assume that c.data memory has been initialized
+    // Assume that c.data memory has already been initialized
     MPI_Recv(c.data.data(), c.size, MPI_DOUBLE, sender_rank, 0, MPI_COMM_WORLD, nullptr);
     MPI_Recv(&c.size, 1, MPI_INT, sender_rank, 1, MPI_COMM_WORLD, nullptr);
     MPI_Recv(&c.idx_start, 1, MPI_INT, sender_rank, 2, MPI_COMM_WORLD, nullptr);
@@ -60,6 +71,7 @@ void com_port::receive(points_chunk& c, int sender_rank){
 
 template<>
 com_request com_port::receive_begin(points_chunk& c, int sender_rank){
+    // Assume that c.data memory has already been initialized
     com_request requests(4);
     MPI_Irecv(c.data.data(), c.size, MPI_DOUBLE, sender_rank, 0, MPI_COMM_WORLD, &requests[0]);
     MPI_Irecv(&c.size, 1, MPI_INT, sender_rank, 1, MPI_COMM_WORLD, &requests[1]);
