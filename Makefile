@@ -1,29 +1,34 @@
-# The mpi compiler
-CC = mpic++
+CC=mpic++
 
-# Compiler flags
-CFLAGS = -Wall -O3
+BIN_DIR = bin/
+OBJ_DIR = obj/
+SRC_DIR = src/
 
-# The directories where object files and executables will be created
-BIN_DIR = bin
+CFLAGS = -Wall -O3 -g -std=c++20 -lblas
+LFLAGS = -Wall -O3 -g -std=c++20 -lblas
 
-# The directory where source files are located
-SRC_DIR = src
+EXEC_CPP = $(wildcard $(SRC_DIR)*.cpp)
+EXEC_OBJ = $(EXEC_CPP:$(SRC_DIR)%.cpp=$(OBJ_DIR)%.o)
+EXEC_BIN = $(EXEC_CPP:$(SRC_DIR)%.cpp=$(BIN_DIR)%)
 
-
-# Builds the default executable
-all: mkdir benchmark mpi
-
-
-# Compile
-benchmark: $(SRC_DIR)/*
-	$(CC) $(CFLAGS) $(SRC_DIR)/$@.cpp -o $(BIN_DIR)/$@
-
-mpi: $(SRC_DIR)/*
-	$(CC) $(CFLAGS) $(SRC_DIR)/$@.cpp -o $(BIN_DIR)/$@
+COMMON_CPP = $(wildcard $(SRC_DIR)detail/*.cpp)
+COMMON_OBJ = $(COMMON_CPP:$(SRC_DIR)%.cpp=$(OBJ_DIR)%.o)
+DEPS = $(wildcard $(SRC_DIR)detail/*.hpp)
 
 
-# Create directories
-.PHONY: mkdir
-mkdir:
-	mkdir -p $(BIN_DIR)
+all: $(EXEC_BIN)
+
+
+$(OBJ_DIR)%.o: $(SRC_DIR)%.cpp $(DEPS)
+	@mkdir -p '$(@D)'
+	$(CC) -c $< -o $@ $(CFLAGS)
+
+$(BIN_DIR)%: $(OBJ_DIR)%.o $(COMMON_OBJ)
+	@mkdir -p '$(@D)'
+	$(CC) -o $@ $^ $(LFLAGS)
+
+
+
+.PHONY: clean
+clean:
+	rm -rf $(BIN_DIR)* $(OBJ_DIR)*

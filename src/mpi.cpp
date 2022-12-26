@@ -2,14 +2,11 @@
 #include <string>
 #include <vector>
 
-#include <mpi/mpi.h>
-
-#include "misc.hpp"
-
-#include "mpi_process.hpp"
-#include "communication.hpp"
-#include "points_chunk.hpp"
-#include "worker.hpp"
+#include "detail/misc.hpp"
+#include "detail/mpi_process.hpp"
+#include "detail/communication.hpp"
+#include "detail/points_chunk.hpp"
+#include "detail/worker.hpp"
 
 points_chunk import_data(int idx_start, int idx_end){
     // Imitates importing data

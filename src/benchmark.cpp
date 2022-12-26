@@ -4,12 +4,12 @@
 
 #include <mpi/mpi.h>
 
-#include "misc.hpp"
+#include "detail/misc.hpp"
 
-#include "mpi_process.hpp"
-#include "communication.hpp"
-#include "points_chunk.hpp"
-#include "worker.hpp"
+#include "detail/mpi_process.hpp"
+#include "detail/communication.hpp"
+#include "detail/points_chunk.hpp"
+#include "detail/worker.hpp"
 
 double benchmark_blocking(mpi_process& process, unsigned int data_size,  unsigned int n_pieces){
     // This benchmark is to test the overhead of sending multiple packets vs sending all data in a single request

@@ -6,10 +6,10 @@
 #include <string>
 #include <random>
 
-#include "global_includes.hpp"
-#include "knnDist.hpp"
-#include "testingknn.hpp"
-#include "fileio.hpp"
+#include "detail/global_includes.hpp"
+#include "detail/knnDist.hpp"
+#include "detail/testingknn.hpp"
+#include "detail/fileio.hpp"
 
 void print_results(const QueryPacket& query, const CorpusPacket& corpus, size_t k) {
 
