@@ -12,10 +12,13 @@ SRC_DIR = src
 
 
 # Builds the default executable
-all: mkdir mpi
+all: mkdir benchmark mpi
 
 
 # Compile
+benchmark: $(SRC_DIR)/*
+	$(CC) $(CFLAGS) $(SRC_DIR)/$@.cpp -o $(BIN_DIR)/$@
+
 mpi: $(SRC_DIR)/*
 	$(CC) $(CFLAGS) $(SRC_DIR)/$@.cpp -o $(BIN_DIR)/$@
 
