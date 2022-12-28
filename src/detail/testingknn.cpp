@@ -78,13 +78,13 @@ std::tuple<QueryPacket, CorpusPacket> random_grid(size_t m, size_t n, size_t d, 
 }
 
 std::tuple<QueryPacket, CorpusPacket> file_packets(
-    const std::string& query_path, const size_t m,
-    const std::string& corpus_path, const size_t n,
-    const size_t d
+    const std::string& query_path, const size_t m_upper_limit,
+    const std::string& corpus_path, const size_t n_upper_limit,
+    const size_t d_upper_limit
 ) {
-    std::vector<double> X = load_csv<double>(query_path, m);
+    auto [X, m, d] = load_csv<double>(query_path, m_upper_limit, d_upper_limit, true, true);
 
-    std::vector<double> Y = load_csv<double>(corpus_path, n);
+    auto [Y, n, d_ignore] = load_csv<double>(corpus_path, n_upper_limit, d_upper_limit, true, true);
 
     return std::make_tuple(
         QueryPacket(m, d, 0, m, std::move(X)),

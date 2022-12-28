@@ -11,10 +11,7 @@
 #include "detail/testingknn.hpp"
 #include "detail/fileio.hpp"
 
-void print_results(const QueryPacket& query, const CorpusPacket& corpus, size_t k) {
-
-    ResultPacket result = runDistrData(query, corpus, k, 12, 12);
-
+void print_results(const QueryPacket& query, const CorpusPacket& corpus, const ResultPacket& result, size_t k) {
     // Print the results
     for (size_t i = 0; i < std::min(result.m_packet, (size_t)1); i++)
     {
@@ -65,8 +62,9 @@ int main(int argc, char** argv)
         debug = std::stoi(argv[5]) == 1;
 
         const auto [query, corpus, k] = regual_grid(s, d, m);
+        const ResultPacket result = runDistrData(query, corpus, k, 12, 12);
 
-        print_results(query, corpus, k);
+        print_results(query, corpus, result, k);
     } else if (std::string(argv[1]) == "random") {
         size_t m = std::stoi(argv[2]);
         size_t n = std::stoi(argv[3]);
@@ -76,23 +74,25 @@ int main(int argc, char** argv)
         debug = std::stoi(argv[6]) == 1;
 
         const auto [query, corpus] = random_grid(m, n, d, k);
+        const ResultPacket result = runDistrData(query, corpus, k, 12, 12);
 
-        print_results(query, corpus, k);
+        print_results(query, corpus, result, k);
     } else if (std::string(argv[1]) == "file") {
         std::string query_path = argv[2];
-        size_t m = std::stoi(argv[3]);
+        size_t m_upper_limit = std::stoi(argv[3]);
 
         std::string corpus_path = argv[4];
-        size_t n = std::stoi(argv[5]);
+        size_t n_upper_limit = std::stoi(argv[5]);
 
-        size_t d = std::stoi(argv[6]);
+        size_t d_upper_limit = std::stoi(argv[6]);
         size_t k = std::stoi(argv[7]);
 
         debug = std::stoi(argv[8]) == 1;
 
-        const auto [query, corpus] = file_packets(query_path, m, corpus_path, n, d);
+        const auto [query, corpus] = file_packets(query_path, m_upper_limit, corpus_path, n_upper_limit, d_upper_limit);
+        const ResultPacket result = runDistrData(query, corpus, k, 12, 12);
 
-        print_results(query, corpus, k);
+        print_results(query, corpus, result, k);
     } else {
         std::cout << "Invalid input" << std::endl;
         return 1;
