@@ -6,6 +6,7 @@
 #include "detail/communication.hpp"
 #include "detail/knnDist.hpp"
 #include "detail/worker.hpp"
+#include "detail/utilities.hpp"
 
 
 //Entry point for MPI master
@@ -13,7 +14,7 @@ void master_main(mpi_process& process){
 
     com_port com(process.world_rank, process.world_size);
 
-    int part_size = 500; 
+    int part_size = 20000; 
 
     // Send initial data to all workers
     initial_work_data init_data{part_size,2,3};
@@ -58,8 +59,11 @@ int main(){
     mpi_process process;
 
     if (process.world_rank==0) {
-
+        utilities::timer my_timer;
+        my_timer.start();
         master_main(process);
+        my_timer.stop();
+        std::cout << "Total time: " << my_timer.get()/1000000.0 << " ms" << std::endl;
      
     }
     else{
