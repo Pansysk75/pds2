@@ -2,7 +2,6 @@
 #include <string>
 #include <vector>
 
-#include "detail/misc.hpp"
 #include "detail/mpi_process.hpp"
 #include "detail/communication.hpp"
 #include "detail/knnDist.hpp"
@@ -14,7 +13,7 @@ void master_main(mpi_process& process){
 
     com_port com(process.world_rank, process.world_size);
 
-    int part_size = 5; 
+    int part_size = 500; 
 
     // Send initial data to all workers
     initial_work_data init_data{part_size,2,3};

@@ -1,6 +1,7 @@
 #pragma once
 #include "communication.hpp"
 #include "knnDist.hpp"
+#include <numeric>
 
 #define MASTER_RANK 0
 
@@ -108,7 +109,9 @@ class worker{
             receiving_corpus = CorpusPacket(0, 0, 0, 0);
             receiving_corpus.Y.resize(size*dim);
 
-            results = ResultPacket(size, size, init_data.k, idx_start, idx_end, idx_start, idx_end);
+            // results = ResultPacket(size, 0, init_data.k, idx_start, idx_end, idx_start, idx_end);
+
+            results = ResultPacket(0, 0, 0, 0, 0, 0, 0);
 
             deb("Initialization complete!");
     }
@@ -119,27 +122,27 @@ class worker{
 
     void deb_v(){
         std::string deb_str;
-        deb_str += "query :";
+        deb_str += "query : ";
         deb_str += std::to_string(query.d) + " | ";
         deb_str += std::to_string(query.m_packet) + " | ";
-        deb_str += std::to_string(query.x_start_index) + " | ";
+        deb_str += std::to_string(query.x_start_index) + "->";
         deb_str += std::to_string(query.x_end_index) + " | ";
-        for (auto& elem : query.X) deb_str += std::to_string(elem) += " ";
+        // for (auto& elem : query.X) deb_str += std::to_string(elem) += " ";
 
         deb_str+="\n   ";
 
-        deb_str += "corpus:";
+        deb_str += "corpus: ";
         deb_str += std::to_string(corpus.d) + " | ";
         deb_str += std::to_string(corpus.n_packet) + " | ";
-        deb_str += std::to_string(corpus.y_start_index) + " | ";
+        deb_str += std::to_string(corpus.y_start_index) + "->";
         deb_str += std::to_string(corpus.y_end_index) + " | ";
-        for (auto& elem : corpus.Y) deb_str += std::to_string(elem) += " ";
+        // for (auto& elem : corpus.Y) deb_str += std::to_string(elem) += " ";
 
         deb_str+="\n   ";
 
-        deb_str += "res: " + std::to_string(results.x_start_index) + " " + std::to_string(results.x_end_index) + " | "
-                 + std::to_string(results.y_start_index) + " " + std::to_string(results.y_end_index) + " | " 
-                 + std::to_string(results.m_packet) + " " + std::to_string(results.n_packet) + " | " + std::to_string(results.k);
+        deb_str += "res: " + std::to_string(results.x_start_index) + "->" + std::to_string(results.x_end_index) + " | "
+                 + std::to_string(results.y_start_index) + "->" + std::to_string(results.y_end_index) + " | m:" 
+                 + std::to_string(results.m_packet) + " n:" + std::to_string(results.n_packet) + " | k:" + std::to_string(results.k);
 
         deb(deb_str);
     }
@@ -160,24 +163,25 @@ class worker{
 
             // Start sending the part we just proccessed
             // Start receiving the part we will proccess later
-            // com_request send_req = com.send_begin(corpus, next_rank);
-            // com_request recv_req = com.receive_begin(receiving_corpus, prev_rank);
-            com.send(corpus, next_rank);
-            com.receive(receiving_corpus, prev_rank);
+            com_request send_req = com.send_begin(corpus, next_rank);
+            com_request recv_req = com.receive_begin(receiving_corpus, prev_rank);
+            // com.send(corpus, next_rank);
+            // com.receive(receiving_corpus, prev_rank);
 
 
             // Work on working set
             ResultPacket batch_result(query, corpus, init_data.k);
             // Combine this result with previous results
-            results = ResultPacket::combineKnnResultsSameX(batch_result, results);
+            if(results.n_packet==0) results = std::move(batch_result);
+            else results = ResultPacket::combineKnnResultsSameX(batch_result, results);
 
             // debug worker state
             deb_v();
             
 
             // Wait for open communications to finish
-            // com.wait(send_req);
-            // com.wait(recv_req);
+            com.wait(send_req);
+            com.wait(recv_req);
 
             // Update query_set with received set (using std::swap is the
             // equivelant of swapping the pointers of two C arrays)
