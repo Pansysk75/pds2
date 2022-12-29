@@ -5,48 +5,36 @@
 #include "detail/misc.hpp"
 #include "detail/mpi_process.hpp"
 #include "detail/communication.hpp"
-#include "detail/points_chunk.hpp"
+#include "detail/knnDist.hpp"
 #include "detail/worker.hpp"
 
-points_chunk import_data(int idx_start, int idx_end){
-    // Imitates importing data
-    int size = idx_end - idx_start;
-    std::vector<double> vec(size);
-    std::iota(vec.begin(), vec.end(), idx_start);
-    return {std::move(vec), size, idx_start, idx_end};
-}
 
 //Entry point for MPI master
 void master_main(mpi_process& process){
 
     com_port com(process.world_rank, process.world_size);
 
-    int part_size = 31250000; 
-    // 31250000 doubles = 250Mb
-    // each process will allocate 250*3 = 750 Mb
+    int part_size = 20; 
 
-    // Distribute some work
+    // Send initial data to all workers
     initial_work_data init_data{part_size,2,3};
     for(int i=1; i<process.world_size; i++){
-        int idx_start = i*part_size;
-        int idx_end = (i+1)*part_size;
-        points_chunk points = import_data(idx_start, idx_end);
         com.send(init_data, i);
-        com.send(points, i);
-        com.send(points, i);
     }
-    // Give work to local worker
-    worker w(process.world_rank, process.world_size, true);
-
-    points_chunk points = import_data(0, part_size);
-    w.init_data = init_data;
-    w.corpus_set = points;
-    w.query_set = std::move(points);
-    w.receiving_set = points_chunk(part_size, 0, 0);
+    // Initialize local worker
+    worker w(process.world_rank, process.world_size, init_data);
 
     w.work();
 
-    // TODO: gather result
+    // Gather result
+    std::vector<ResultPacket> diffProcRes;
+    for(int i=1; i<process.world_size; i++){
+        ResultPacket result;
+        com.receive(result, i);
+        diffProcRes.push_back(result);
+    }
+
+    ResultPacket final_result = ResultPacket::combineCompleteQueries(diffProcRes);
 
 }
 

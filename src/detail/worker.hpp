@@ -1,8 +1,16 @@
 #pragma once
 #include "communication.hpp"
-#include "points_chunk.hpp"
+#include "knnDist.hpp"
 
 #define MASTER_RANK 0
+
+std::vector<double> import_data(int idx_start, int idx_end){
+    // Imitates importing data
+    int size = idx_end - idx_start;
+    std::vector<double> vec(size);
+    std::iota(vec.begin(), vec.end(), idx_start);
+    return vec;
+}
 
 
 struct initial_work_data{
@@ -58,35 +66,49 @@ class worker{
     initial_work_data init_data;
 
     // Points this worker is responsible for (constant for the lifetime of this worker)
-    points_chunk query_set;
+    QueryPacket query;
 
     // Points which are processed in one iteration (different for every iteration)
-    points_chunk corpus_set;
+    CorpusPacket corpus;
 
     // A set that is allocated for receiving a points_chunk.
-    points_chunk receiving_set;
+    CorpusPacket receiving_corpus;
 
-    worker(int rank, int world_size, bool is_local = false)
-        :com(rank, world_size){
-        
+    // KNN result for local points, will be combined in master process
+    ResultPacket results;
+
+    worker(int rank, int world_size)
+        :com(rank, world_size){       
         // Initialize worker and receive inital data / corpus set
         // The master mpi process is responsible for transfering initial 
         // data to all workers. Then, the workers will exchange data in a 
-        // cyclical pattern, until all workers have processed all data.
-
-        if(!is_local){
+        // cyclical pattern, until all workers have processed all data.      
             com.receive(init_data, MASTER_RANK);
+            init();
+    }
+
+    worker(int rank, int world_size, initial_work_data init_data)
+        :com(rank, world_size), init_data(init_data){
+        init();
+    }
+    
+    void init(){
+            int size = init_data.n;
             
-            query_set = points_chunk(init_data.n, 0, 0);
-            corpus_set = points_chunk(init_data.n, 0, 0);
-            receiving_set = points_chunk(init_data.n, 0, 0);
+            int idx_start = com.rank()*size;
+            int idx_end = (com.rank()+1)*size;
 
+            query = QueryPacket(size, init_data.d, idx_start, idx_end);
+            query.X = import_data(idx_start, idx_end);
 
-            com.receive(query_set, MASTER_RANK);
-            com.receive(corpus_set, MASTER_RANK);
+            corpus = CorpusPacket(size, init_data.d, idx_start, idx_end);
+            corpus.Y = import_data(idx_start, idx_end);
 
-            deb("Received initial data");
-        }
+            receiving_corpus.Y.resize(size);
+
+            results = ResultPacket(size, size, init_data.k, idx_start, idx_end, idx_start, idx_end);
+
+            deb("Initialization complete!");
     }
 
     void deb(std::string str){
@@ -96,6 +118,8 @@ class worker{
 
 
     void work(){
+
+        deb("Starting work with sizes " + std::to_string(corpus.Y.size()));
 
         for(int i=0; i<com.world_size(); i++){
 
@@ -107,27 +131,29 @@ class worker{
 
             // Start sending the part we just proccessed
             // Start receiving the part we will proccess later
-            com_request send_req = com.send_begin(corpus_set, next_rank);
-            com_request recv_req = com.receive_begin(receiving_set, prev_rank);
+            com_request send_req = com.send_begin(corpus, next_rank);
+            com_request recv_req = com.receive_begin(receiving_corpus, prev_rank);
 
 
             // Work on working set
-            // kNN(query_set, corpus_set)
-            // deb(corpus_set.to_string());
+            deb("Started calculating batch " + std::to_string(i));
+            ResultPacket batch_result(query, corpus, init_data.k);
+            deb("Finished calculating batch " + std::to_string(i));
+            // Combine this result with previous results
+            results = ResultPacket::combineKnnResultsSameX(results, batch_result);
 
-            // Wait for open communications to finish before
-            // starting next iteration.
+            // Wait for open communications to finish
             com.wait(send_req);
             com.wait(recv_req);
 
             // Update query_set with received set (using std::swap is the
             // equivelant of swapping the pointers of two C arrays)
-            std::swap(corpus_set, receiving_set);
+            std::swap(corpus, receiving_corpus);
             
         }
 
         // Work finished, send results to master process
-        // com.send(knn_result, MASTER_RANK)
+        if (com.rank() != MASTER_RANK) com.send(results, MASTER_RANK);
 
     }
 

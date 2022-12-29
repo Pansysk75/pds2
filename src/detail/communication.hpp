@@ -1,4 +1,5 @@
 #pragma once
+
 #include <mpi/mpi.h>
 #include <vector>
 
@@ -56,24 +57,24 @@ public:
 // Implementation for int:
 
 template<>
-void com_port::send(int& k, int receiver_rank){
+inline void com_port::send(int& k, int receiver_rank){
     MPI_Send(&k, 1, MPI_INT, receiver_rank, 0, MPI_COMM_WORLD);
 }
 
 template<>
-com_request com_port::send_begin(int& k, int receiver_rank){
+inline com_request com_port::send_begin(int& k, int receiver_rank){
     MPI_Request request;
     MPI_Isend(&k, 1, MPI_INT, receiver_rank, 0, MPI_COMM_WORLD, &request);
     return com_request{request};
 }
 
 template<>
-void com_port::receive(int& k, int sender_rank){
+inline void com_port::receive(int& k, int sender_rank){
     MPI_Recv(&k, 1, MPI_INT, sender_rank, 0, MPI_COMM_WORLD, nullptr);
 }
 
 template<>
-com_request com_port::receive_begin(int& k, int sender_rank){
+inline com_request com_port::receive_begin(int& k, int sender_rank){
     MPI_Request request;
     MPI_Irecv(&k, 1, MPI_INT, sender_rank, 0, MPI_COMM_WORLD, &request);
     return com_request{request};
@@ -84,25 +85,25 @@ com_request com_port::receive_begin(int& k, int sender_rank){
 // Implementation for std::vector<double>
 
 template<>
-void com_port::send(std::vector<double>& vec, int receiver_rank){
+inline void com_port::send(std::vector<double>& vec, int receiver_rank){
     MPI_Send(vec.data(), vec.size(), MPI_DOUBLE, receiver_rank, 0, MPI_COMM_WORLD);
 }
 
 template<>
-com_request com_port::send_begin(std::vector<double>& vec, int receiver_rank){
+inline com_request com_port::send_begin(std::vector<double>& vec, int receiver_rank){
     com_request requests(1);
     MPI_Isend(vec.data(), vec.size(), MPI_DOUBLE, receiver_rank, 0, MPI_COMM_WORLD, &requests[0]);
     return requests;
 }
 
 template<>
-void com_port::receive(std::vector<double>& vec, int sender_rank){
+inline void com_port::receive(std::vector<double>& vec, int sender_rank){
     // Assume that c.data memory has already been initialized
     MPI_Recv(vec.data(), vec.size(), MPI_DOUBLE, sender_rank, 0, MPI_COMM_WORLD, nullptr);
 }
 
 template<>
-com_request com_port::receive_begin(std::vector<double>& vec, int sender_rank){
+inline com_request com_port::receive_begin(std::vector<double>& vec, int sender_rank){
     // Assume that c.data memory has already been initialized
     com_request requests(1);
     MPI_Irecv(vec.data(), vec.size(), MPI_DOUBLE, sender_rank, 0, MPI_COMM_WORLD, &requests[0]);

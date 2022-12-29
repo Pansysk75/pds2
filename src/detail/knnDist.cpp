@@ -30,13 +30,6 @@ CorpusPacket::CorpusPacket(
 {
 }
 
-CorpusPacket::CorpusPacket(CorpusPacket&& other) :
-    n_packet(other.n_packet), d(other.d),
-    y_start_index(other.y_start_index), y_end_index(other.y_end_index),
-    Y(std::move(other.Y))
-{
-}
-
 QueryPacket::QueryPacket(
     size_t m_packet, size_t d,
     size_t x_start_index, size_t x_end_index
@@ -46,14 +39,7 @@ QueryPacket::QueryPacket(
 {
     X = std::vector<double>(m_packet * d);
 }
-/*
-QueryPacket::QueryPacket(QueryPacket&& other) :
-    m_packet(other.m_packet), d(other.d),
-    x_start_index(other.x_start_index), x_end_index(other.x_end_index),
-    X(std::move(other.X))
-{
-}
-*/
+
 
 QueryPacket::QueryPacket(
     size_t m_packet, size_t d,
