@@ -14,7 +14,7 @@ void master_main(mpi_process& process){
 
     com_port com(process.world_rank, process.world_size);
 
-    int part_size = 20; 
+    int part_size = 5; 
 
     // Send initial data to all workers
     initial_work_data init_data{part_size,2,3};
@@ -28,10 +28,16 @@ void master_main(mpi_process& process){
 
     // Gather result
     std::vector<ResultPacket> diffProcRes;
+    diffProcRes.push_back(w.results);
     for(int i=1; i<process.world_size; i++){
-        ResultPacket result;
+        ResultPacket result(init_data.k);
         com.receive(result, i);
         diffProcRes.push_back(result);
+    }
+
+    std::cout << "RESULTS\n";
+    for(auto& elem : diffProcRes){
+        std::cout << elem.x_start_index << " " << elem.x_end_index << " | " << elem.y_start_index << " " << elem.y_end_index << " | " << elem.m_packet << " " << elem.n_packet << " | " << elem.k << std::endl;
     }
 
     ResultPacket final_result = ResultPacket::combineCompleteQueries(diffProcRes);

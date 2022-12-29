@@ -4,11 +4,11 @@
 
 #define MASTER_RANK 0
 
-std::vector<double> import_data(int idx_start, int idx_end){
+std::vector<double> import_data(int idx_start, int idx_end, int dim){
     // Imitates importing data
     int size = idx_end - idx_start;
-    std::vector<double> vec(size);
-    std::iota(vec.begin(), vec.end(), idx_start);
+    std::vector<double> vec(size*dim);
+    std::iota(vec.begin(), vec.end(), idx_start*dim);
     return vec;
 }
 
@@ -16,7 +16,7 @@ std::vector<double> import_data(int idx_start, int idx_end){
 struct initial_work_data{
     // Must be passed to every worker proccess, stores
     // data that is not known at compile time
-    int n; // number of elements in each packet
+    int n; // number of d-dimensional points in each packet
     int d; // dimensionality of point-space
     int k; // number of nearest neighbours that should be found
 };
@@ -94,17 +94,19 @@ class worker{
     
     void init(){
             int size = init_data.n;
+            int dim = init_data.d;
             
             int idx_start = com.rank()*size;
             int idx_end = (com.rank()+1)*size;
 
-            query = QueryPacket(size, init_data.d, idx_start, idx_end);
-            query.X = import_data(idx_start, idx_end);
+            query = QueryPacket(size, dim, idx_start, idx_end);
+            query.X = import_data(idx_start, idx_end, dim);
 
-            corpus = CorpusPacket(size, init_data.d, idx_start, idx_end);
-            corpus.Y = import_data(idx_start, idx_end);
+            corpus = CorpusPacket(size, dim, idx_start, idx_end);
+            corpus.Y = import_data(idx_start, idx_end, dim);
 
-            receiving_corpus.Y.resize(size);
+            receiving_corpus = CorpusPacket(0, 0, 0, 0);
+            receiving_corpus.Y.resize(size*dim);
 
             results = ResultPacket(size, size, init_data.k, idx_start, idx_end, idx_start, idx_end);
 
@@ -115,14 +117,41 @@ class worker{
         std::cout << com.rank() << ": " << str << std::endl;
     }
 
+    void deb_v(){
+        std::string deb_str;
+        deb_str += "query :";
+        deb_str += std::to_string(query.d) + " | ";
+        deb_str += std::to_string(query.m_packet) + " | ";
+        deb_str += std::to_string(query.x_start_index) + " | ";
+        deb_str += std::to_string(query.x_end_index) + " | ";
+        for (auto& elem : query.X) deb_str += std::to_string(elem) += " ";
+
+        deb_str+="\n   ";
+
+        deb_str += "corpus:";
+        deb_str += std::to_string(corpus.d) + " | ";
+        deb_str += std::to_string(corpus.n_packet) + " | ";
+        deb_str += std::to_string(corpus.y_start_index) + " | ";
+        deb_str += std::to_string(corpus.y_end_index) + " | ";
+        for (auto& elem : corpus.Y) deb_str += std::to_string(elem) += " ";
+
+        deb_str+="\n   ";
+
+        deb_str += "res: " + std::to_string(results.x_start_index) + " " + std::to_string(results.x_end_index) + " | "
+                 + std::to_string(results.y_start_index) + " " + std::to_string(results.y_end_index) + " | " 
+                 + std::to_string(results.m_packet) + " " + std::to_string(results.n_packet) + " | " + std::to_string(results.k);
+
+        deb(deb_str);
+    }
+
 
 
     void work(){
 
-        deb("Starting work with sizes " + std::to_string(corpus.Y.size()));
 
-        for(int i=0; i<com.world_size(); i++){
+        for(int i=0; i<com.world_size()-1; i++){
 
+            // Debug s*&.. stuff
             deb("Started iteration " + std::to_string(i));
 
             int next_rank = (com.rank() + 1) % com.world_size();
@@ -131,26 +160,35 @@ class worker{
 
             // Start sending the part we just proccessed
             // Start receiving the part we will proccess later
-            com_request send_req = com.send_begin(corpus, next_rank);
-            com_request recv_req = com.receive_begin(receiving_corpus, prev_rank);
+            // com_request send_req = com.send_begin(corpus, next_rank);
+            // com_request recv_req = com.receive_begin(receiving_corpus, prev_rank);
+            com.send(corpus, next_rank);
+            com.receive(receiving_corpus, prev_rank);
 
 
             // Work on working set
-            deb("Started calculating batch " + std::to_string(i));
             ResultPacket batch_result(query, corpus, init_data.k);
-            deb("Finished calculating batch " + std::to_string(i));
             // Combine this result with previous results
-            results = ResultPacket::combineKnnResultsSameX(results, batch_result);
+            results = ResultPacket::combineKnnResultsSameX(batch_result, results);
+
+            // debug worker state
+            deb_v();
+            
 
             // Wait for open communications to finish
-            com.wait(send_req);
-            com.wait(recv_req);
+            // com.wait(send_req);
+            // com.wait(recv_req);
 
             // Update query_set with received set (using std::swap is the
             // equivelant of swapping the pointers of two C arrays)
             std::swap(corpus, receiving_corpus);
             
         }
+        // Work on last batch
+        ResultPacket batch_result(query, corpus, init_data.k);
+        // Combine this result with previous results
+        results = ResultPacket::combineKnnResultsSameX(batch_result, results);
+        deb_v();
 
         // Work finished, send results to master process
         if (com.rank() != MASTER_RANK) com.send(results, MASTER_RANK);

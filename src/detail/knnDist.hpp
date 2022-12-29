@@ -38,7 +38,7 @@ struct CorpusPacket {
 
 template<>
 inline void com_port::send(CorpusPacket& c, int receiver_rank){
-    MPI_Send(c.Y.data(),        c.Y.size(), MPI_DOUBLE, receiver_rank, 0, MPI_COMM_WORLD);
+    MPI_Send(c.Y.data(), c.n_packet*c.d, MPI_DOUBLE, receiver_rank, 0, MPI_COMM_WORLD);
     MPI_Send(&c.n_packet,       1, MPI_INT, receiver_rank, 1, MPI_COMM_WORLD);
     MPI_Send(&c.d,              1, MPI_INT, receiver_rank, 2, MPI_COMM_WORLD);
     MPI_Send(&c.y_start_index,  1, MPI_INT, receiver_rank, 3, MPI_COMM_WORLD);
@@ -48,7 +48,7 @@ inline void com_port::send(CorpusPacket& c, int receiver_rank){
 template<>
 inline com_request com_port::send_begin(CorpusPacket& c, int receiver_rank){
     com_request requests(5);
-    MPI_Isend(c.Y.data(), c.Y.size(),   MPI_DOUBLE, receiver_rank, 0, MPI_COMM_WORLD, &requests[0]);
+    MPI_Isend(c.Y.data(), c.n_packet*c.d,   MPI_DOUBLE, receiver_rank, 0, MPI_COMM_WORLD, &requests[0]);
     MPI_Isend(&c.n_packet, 1,           MPI_INT, receiver_rank, 1, MPI_COMM_WORLD, &requests[1]);
     MPI_Isend(&c.d, 1,                  MPI_INT, receiver_rank, 2, MPI_COMM_WORLD, &requests[2]);
     MPI_Isend(&c.y_start_index, 1,      MPI_INT, receiver_rank, 3, MPI_COMM_WORLD, &requests[3]);
@@ -109,6 +109,15 @@ struct QueryPacket {
         size_t x_start_index, size_t x_end_index
     );
 
+    // std::string to_string() const {
+    //     std::string str;
+    //     str += std::to_string(x_start_index) + "->" + std::to_string(x_end_index) + " " +
+    //            std::to_string(d) + " " + std::to_string(m_packet);
+    //     for(auto& elem : )
+        
+    //     return 
+    // }
+
 };
 
 
@@ -119,7 +128,7 @@ struct QueryPacket {
 
 template<>
 inline void com_port::send(QueryPacket& c, int receiver_rank){
-    MPI_Send(c.X.data(),        c.X.size(), MPI_DOUBLE, receiver_rank, 0, MPI_COMM_WORLD);
+    MPI_Send(c.X.data(),       c.m_packet*c.d, MPI_DOUBLE, receiver_rank, 0, MPI_COMM_WORLD);
     MPI_Send(&c.m_packet,       1, MPI_INT, receiver_rank, 1, MPI_COMM_WORLD);
     MPI_Send(&c.d,              1, MPI_INT, receiver_rank, 2, MPI_COMM_WORLD);
     MPI_Send(&c.x_start_index,  1, MPI_INT, receiver_rank, 3, MPI_COMM_WORLD);
@@ -129,7 +138,7 @@ inline void com_port::send(QueryPacket& c, int receiver_rank){
 template<>
 inline com_request com_port::send_begin(QueryPacket& c, int receiver_rank){
     com_request requests(5);
-    MPI_Isend(c.X.data(), c.X.size(),   MPI_DOUBLE, receiver_rank, 0, MPI_COMM_WORLD, &requests[0]);
+    MPI_Isend(c.X.data(), c.m_packet*c.d,   MPI_DOUBLE, receiver_rank, 0, MPI_COMM_WORLD, &requests[0]);
     MPI_Isend(&c.m_packet, 1,           MPI_INT, receiver_rank, 1, MPI_COMM_WORLD, &requests[1]);
     MPI_Isend(&c.d, 1,                  MPI_INT, receiver_rank, 2, MPI_COMM_WORLD, &requests[2]);
     MPI_Isend(&c.x_start_index, 1,      MPI_INT, receiver_rank, 3, MPI_COMM_WORLD, &requests[3]);
@@ -188,6 +197,18 @@ struct ResultPacket {
     // empty constructor
     ResultPacket(){}
 
+    ResultPacket(size_t vec_size){
+        nidx.resize(vec_size);
+        ndist.resize(vec_size);
+        m_packet = 0;
+        n_packet = 0;
+        k = 0;
+        x_start_index = 0;
+        x_end_index = 0;
+        y_start_index = 0;
+        y_end_index = 0;
+    }
+
     // this is the constructor for the result packet, without it being solved. It needs to be filled manually
     ResultPacket(
         size_t m_packet, size_t n_packet, size_t k,
@@ -241,8 +262,8 @@ struct ResultPacket {
 
 template<>
 inline void com_port::send(ResultPacket& c, int receiver_rank){
-    MPI_Send(c.nidx.data(), c.nidx.size(),      MPI_INT,    receiver_rank, 0, MPI_COMM_WORLD);
-    MPI_Send(c.ndist.data(), c.ndist.size(),    MPI_DOUBLE, receiver_rank, 1, MPI_COMM_WORLD);
+    MPI_Send(c.nidx.data(), c.k,      MPI_INT,    receiver_rank, 0, MPI_COMM_WORLD);
+    MPI_Send(c.ndist.data(), c.k,    MPI_DOUBLE, receiver_rank, 1, MPI_COMM_WORLD);
 
     MPI_Send(&c.m_packet, 1,                    MPI_INT,    receiver_rank, 2, MPI_COMM_WORLD);
     MPI_Send(&c.n_packet, 1,                    MPI_INT,    receiver_rank, 3, MPI_COMM_WORLD);
