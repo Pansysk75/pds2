@@ -184,6 +184,7 @@ ResultPacket simpleKnn(const QueryPacket& query, const CorpusPacket& corpus, siz
     };
 
     size_t k = results.k;
+    size_t d = query.d;
 
     results.nidx.resize(query.m_packet * k);
     results.ndist.resize(query.m_packet * k);
@@ -192,8 +193,8 @@ ResultPacket simpleKnn(const QueryPacket& query, const CorpusPacket& corpus, siz
     for (unsigned int x=0; x<query.m_packet; x++){
         for (unsigned int y=0; y<corpus.n_packet; y++){
             double distance = 0;
-            for(unsigned int i=0; i<query.d; i++){
-                distance += (query.X[x+i] - corpus.Y[y+i])*(query.X[x+i] - corpus.Y[y+i]);
+            for(unsigned int i=0; i<d; i++){
+                distance += (query.X[d*x+i] - corpus.Y[d*y+i])*(query.X[d*x+i] - corpus.Y[d*y+i]);
             }
             idx_dist_vec[y] = {distance, y+corpus.y_start_index};
         }
