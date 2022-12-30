@@ -6,6 +6,7 @@
 #include <sstream>
 #include <filesystem>
 #include <algorithm>
+#include <numeric>
 
 #define UNASSIGNED -1
 #define NO_COLOR -1
@@ -62,3 +63,11 @@ template std::tuple<std::vector<int>, size_t, size_t> load_csv<int>(const std::s
 template std::tuple<std::vector<size_t>, size_t, size_t> load_csv<size_t>(const std::string& filename, const size_t line_upper_limit, const size_t el_upper_limit, const bool skip_first_line, const bool skip_first_field);
 template std::tuple<std::vector<float>, size_t, size_t> load_csv<float>(const std::string& filename, const size_t line_upper_limit, const size_t el_upper_limit, const bool skip_first_line, const bool skip_first_field);
 template std::tuple<std::vector<double>, size_t, size_t> load_csv<double>(const std::string& filename, const size_t line_upper_limit, const size_t el_upper_limit, const bool skip_first_line, const bool skip_first_field);
+
+std::vector<double> import_data(int idx_start, int idx_end, int dim){
+    // Imitates importing data
+    int size = idx_end - idx_start;
+    std::vector<double> vec(size*dim);
+    std::iota(vec.begin(), vec.end(), idx_start*dim);
+    return vec;
+}

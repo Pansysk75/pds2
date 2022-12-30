@@ -1,17 +1,9 @@
 #pragma once
 #include "communication.hpp"
 #include "knnDist.hpp"
-#include <numeric>
+#include "fileio.hpp"
 
 #define MASTER_RANK 0
-
-std::vector<double> import_data(int idx_start, int idx_end, int dim){
-    // Imitates importing data
-    int size = idx_end - idx_start;
-    std::vector<double> vec(size*dim);
-    std::iota(vec.begin(), vec.end(), idx_start*dim);
-    return vec;
-}
 
 
 struct initial_work_data{

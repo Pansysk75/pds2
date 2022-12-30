@@ -2,6 +2,7 @@
 #include <chrono>
 #include <tuple>
 #include <omp.h>
+#include <algorithm>
 
 #include "knnDist.hpp"
 #include "testingknn.hpp"
@@ -165,4 +166,45 @@ ResultPacket runDistrData(const QueryPacket& query, const CorpusPacket& corpus, 
     std::cout << "Elapsed time: " << elapsed.count() << " s" << std::endl;
 
     return result;
+}
+
+ResultPacket simpleKnn(const QueryPacket& query, const CorpusPacket& corpus, size_t k_arg){
+    // Make packet with appropriate metadata
+    ResultPacket results(query.m_packet, corpus.n_packet, std::min(k_arg, corpus.n_packet),
+                        query.x_start_index, query.x_end_index, corpus.y_start_index, corpus.y_end_index);
+
+    // Calculate kNN in the dumbest but easiest way
+    struct index_distance_pair{
+        double distance;
+        size_t index;
+        
+        bool operator<(index_distance_pair const& rh) const{
+            return distance < rh.distance;
+        }
+    };
+
+    size_t k = results.k;
+
+    results.nidx.resize(query.m_packet * k);
+    results.ndist.resize(query.m_packet * k);
+
+    std::vector<index_distance_pair> idx_dist_vec(corpus.n_packet);
+    for (unsigned int x=0; x<query.m_packet; x++){
+        for (unsigned int y=0; y<corpus.n_packet; y++){
+            double distance = 0;
+            for(unsigned int i=0; i<query.d; i++){
+                distance += (query.X[x+i] - corpus.Y[y+i])*(query.X[x+i] - corpus.Y[y+i]);
+            }
+            idx_dist_vec[y] = {distance, y+corpus.y_start_index};
+        }
+
+        std::partial_sort(idx_dist_vec.begin(), idx_dist_vec.begin()+k, idx_dist_vec.end());
+        //write result
+        for (unsigned int i = 0; i < k; i++){
+            results.nidx[idx(x,i,k)] = idx_dist_vec[i].index;
+            results.ndist[idx(x,i,k)] = idx_dist_vec[i].distance;
+        }
+    }
+
+    return results;
 }

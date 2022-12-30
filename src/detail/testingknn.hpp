@@ -16,3 +16,5 @@ ResultPacket runData(const QueryPacket& query, const CorpusPacket& corpus, size_
 ResultPacket runDistrData(const QueryPacket& query, const CorpusPacket& corpus, size_t k, size_t num_batches_x, size_t num_batches_y);
 
 ResultPacket SyskoSimulation(const QueryPacket& query, const CorpusPacket& corpus, size_t k, const size_t num_batches_x, const size_t num_batches_y);
+
+ResultPacket simpleKnn(const QueryPacket& query, const CorpusPacket& corpus, size_t k_arg);
