@@ -4,8 +4,8 @@ BIN_DIR = bin/
 OBJ_DIR = obj/
 SRC_DIR = src/
 
-CFLAGS = -Wall -O3 -g -std=c++20 -lblas
-LFLAGS = -Wall -O3 -g -std=c++20 -lblas
+CFLAGS = -Wall -g -std=c++20 -lblas -O3 
+LFLAGS = -Wall -g -std=c++20 -lblas -O3 
 
 EXEC_CPP = $(wildcard $(SRC_DIR)*.cpp)
 EXEC_OBJ = $(EXEC_CPP:$(SRC_DIR)%.cpp=$(OBJ_DIR)%.o)
@@ -13,6 +13,9 @@ EXEC_BIN = $(EXEC_CPP:$(SRC_DIR)%.cpp=$(BIN_DIR)%)
 
 COMMON_CPP = $(wildcard $(SRC_DIR)detail/*.cpp)
 COMMON_OBJ = $(COMMON_CPP:$(SRC_DIR)%.cpp=$(OBJ_DIR)%.o)
+
+.SECONDARY: $(COMMON_OBJ) $(EXEC_OBJ) #Added this so that .o files aren't deleted
+
 DEPS = $(wildcard $(SRC_DIR)detail/*.hpp)
 
 

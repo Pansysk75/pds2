@@ -157,28 +157,32 @@ ResultPacket knn_dynamic(const QueryPacket &query, const CorpusPacket &corpus, s
     ResultPacket res(query.m_packet, corpus.n_packet, std::min(k_arg, corpus.n_packet),
                      query.x_start_index, query.x_end_index, corpus.y_start_index, corpus.y_end_index);
 
+    size_t k = res.k;
+    size_t d = query.d;
+
     // Max heap is used to store idx-distance of only k nearest points
-    bounded_max_heap<index_distance_pair> heap(res.k);
+    bounded_max_heap<index_distance_pair> heap(k);
     for (unsigned int x = 0; x < query.m_packet; x++)
     {
         heap.clear();
         for (unsigned int y = 0; y < corpus.n_packet; y++)
         {
             double distance = 0;
-            for (unsigned int i = 0; i < query.d; i++)
+            for (unsigned int i = 0; i < d; i++)
             {
-                distance += (query.X[x + i] - corpus.Y[y + i]) * (query.X[x + i] - corpus.Y[y + i]);
+                distance += (query.X[d * x + i] - corpus.Y[d * y + i]) *
+                            (query.X[d * x + i] - corpus.Y[d * y + i]);
             }
-            heap.insert({distance, y});
+            heap.insert({distance, y + res.y_start_index});
         }
 
-        res.nidx.resize(query.m_packet * res.k);
-        res.ndist.resize(query.m_packet * res.k);
+        res.nidx.resize(query.m_packet * k);
+        res.ndist.resize(query.m_packet * k);
         // write result from heap to vectors
-        for (unsigned int i = 0; i < res.k; i++)
+        for (unsigned int i = 0; i < k; i++)
         {
-            res.nidx[i] = heap.data[i].index;
-            res.ndist[i] = heap.data[i].distance;
+            res.nidx[idx(x, i, k)] = heap.data[i].index;
+            res.ndist[idx(x, i, k)] = heap.data[i].distance;
         }
     }
     return res;
