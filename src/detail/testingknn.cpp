@@ -1,15 +1,15 @@
 #include <algorithm>
 #include <chrono>
-#include <omp.h>
+// #include <omp.h>
 #include <random>
 #include <tuple>
 
+#include "testingknn.hpp"
 #include "fileio.hpp"
 #include "global_includes.hpp"
 #include "knn_structs.hpp"
 #include "knn_utils.hpp"
 #include "knn_algorithms.hpp"
-#include "testingknn.hpp"
 
 // RowMajor 3d grid up to SxSxS
 // m is query points
