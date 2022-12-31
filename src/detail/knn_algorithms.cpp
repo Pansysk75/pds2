@@ -75,15 +75,21 @@ ResultPacket knn_blas(const QueryPacket &query,
     std::vector<double> X2(res.m_packet);
     for (size_t i = 0; i < res.m_packet; i++)
     {
-        X2[i] = cblas_ddot(d, &query.X[idx(i, 0, query.d)], 1,
-                           &query.X[idx(i, 0, query.d)], 1);
+        X2[i] = cblas_ddot(
+            d,
+            &query.X[idx(i, 0, query.d)], 1,
+            &query.X[idx(i, 0, query.d)], 1
+        );
     }
 
     std::vector<double> Y2(corpus.n_packet);
     for (size_t i = 0; i < corpus.n_packet; i++)
     {
-        Y2[i] = cblas_ddot(d, &corpus.Y[idx(i, 0, d)], 1,
-                           &corpus.Y[idx(i, 0, d)], 1);
+        Y2[i] = cblas_ddot(
+            d,
+            &corpus.Y[idx(i, 0, d)], 1,
+            &corpus.Y[idx(i, 0, d)], 1
+        );
     }
 
     std::vector<double> D(query.m_packet * corpus.n_packet);
