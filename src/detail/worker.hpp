@@ -17,12 +17,12 @@ struct initial_work_data
 };
 
 template <>
-void com_port::send(int destination_id, initial_work_data &d)
+void com_port::_impl_send(int destination_id, initial_work_data &d)
 {
     send(destination_id, d.n, d.d, d.k);
 }
 template <>
-void com_port::receive(int source_id, initial_work_data &d)
+void com_port::_impl_receive(int source_id, initial_work_data &d)
 {
     receive(source_id, d.n, d.d, d.k);
 }

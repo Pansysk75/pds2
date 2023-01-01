@@ -15,7 +15,7 @@ public:
         this->insert(this->end(), rhs.begin(), rhs.end());
         return *this;
     }
-    com_request(MPI_Request r)
+    com_request(MPI_Request &r)
     {
         this->push_back(r);
     }
@@ -56,26 +56,26 @@ public:
 
     // Blocking receive
     template <typename T>
-    void receive(int source_id, T &t) = delete;
+    void _impl_receive(int source_id, T &t) = delete;
 
     template <typename... P>
-        requires(sizeof...(P) > 1)
+        requires(sizeof...(P) > 0)
     void receive(int source_id, P &...p)
     {
-        (receive(source_id, p), ...);
+        (_impl_receive(source_id, p), ...);
         std::cout << "PROC\t" << _rank << "\tRECV " << _tag << std::endl;
         _tag = 0; // reset tag
     }
 
     // Non-blocking receive
     template <typename T>
-    com_request receive_begin(int source_id, T &) = delete;
+    com_request _impl_receive_begin(int source_id, T &) = delete;
 
     template <typename... P>
-        requires(sizeof...(P) > 1)
+        requires(sizeof...(P) > 0)
     com_request receive_begin(int source_id, P &...p)
     {
-        com_request request = (receive_begin(source_id, p) << ...);
+        com_request request = (_impl_receive_begin(source_id, p) << ...);
         std::cout << "PROC\t" << _rank << "\tISEND\t" << _tag << std::endl;
         _tag = 0; // reset tag
         return request;
@@ -83,36 +83,40 @@ public:
 
     // Blocking send
     template <typename T>
-    void send(int source_id, T &) = delete;
+    void _impl_send(int source_id, T &) = delete;
 
     template <typename... P>
-        requires(sizeof...(P) > 1)
+        requires(sizeof...(P) > 0)
     void send(int destination_id, P &...p)
     {
-        (send(destination_id, p), ...);
+        (_impl_send(destination_id, p), ...);
         std::cout << "PROC\t" << _rank << "\tSEND\t" << _tag << std::endl;
         _tag = 0; // reset tag
     }
 
     // Non-blocking send
     template <typename T>
-    com_request send_begin(int source_id, T &) = delete;
+    com_request _impl_send_begin(int source_id, T &) = delete;
 
     template <typename... P>
-        requires(sizeof...(P) > 1)
+        requires(sizeof...(P) > 0)
     com_request send_begin(int destination_id, P &...p)
     {
-        com_request request = (send_begin(destination_id, p) << ...);
+        com_request request = (_impl_send_begin(destination_id, p) << ...);
         std::cout << "PROC\t" << _rank << "\tIRECV\t" << _tag << std::endl;
         _tag = 0;
         return request;
     }
 
-    // com_request send_begin(int destination_id, size_t &k);
-    // com_request send_begin(int destination_id, std::vector<double> &k);
-
     // Waits for a non-blocking communication to complete
-    void wait(com_request request)
+    template <std::convertible_to<com_request>... P>
+        requires(sizeof...(P) > 0)
+    void wait(P &...req)
+    {
+        (wait(req), ...);
+    }
+
+    void wait(com_request &request)
     {
         for (auto &request_elem : request)
         {
@@ -130,25 +134,25 @@ public:
 //////////////
 
 template <>
-inline void com_port::receive(int source_id, int &k)
+inline void com_port::_impl_receive(int source_id, int &k)
 {
     MPI_Recv(&k, 1, MPI_INT, source_id, _tag++, MPI_COMM_WORLD, nullptr);
 }
 
 template <>
-inline void com_port::receive(int source_id, size_t &k)
+inline void com_port::_impl_receive(int source_id, size_t &k)
 {
     MPI_Recv(&k, 1, MPI_UNSIGNED_LONG, source_id, _tag++, MPI_COMM_WORLD, nullptr);
 }
 
 template <>
-inline void com_port::receive(int source_id, std::vector<double> &v)
+inline void com_port::_impl_receive(int source_id, std::vector<double> &v)
 {
     MPI_Recv(v.data(), v.size(), MPI_DOUBLE, source_id, _tag++, MPI_COMM_WORLD, nullptr);
 }
 
 template <>
-inline void com_port::receive(int source_id, std::vector<size_t> &v)
+inline void com_port::_impl_receive(int source_id, std::vector<size_t> &v)
 {
     MPI_Recv(v.data(), v.size(), MPI_UNSIGNED_LONG, source_id, _tag++, MPI_COMM_WORLD, nullptr);
 }
@@ -158,7 +162,7 @@ inline void com_port::receive(int source_id, std::vector<size_t> &v)
 ///////////////////////////
 
 template <>
-inline com_request com_port::receive_begin(int source_id, int &k)
+inline com_request com_port::_impl_receive_begin(int source_id, int &k)
 {
     MPI_Request request;
     MPI_Irecv(&k, 1, MPI_INT, source_id, _tag++, MPI_COMM_WORLD, &request);
@@ -166,7 +170,7 @@ inline com_request com_port::receive_begin(int source_id, int &k)
 }
 
 template <>
-inline com_request com_port::receive_begin(int source_id, size_t &k)
+inline com_request com_port::_impl_receive_begin(int source_id, size_t &k)
 {
     MPI_Request request;
     MPI_Irecv(&k, 1, MPI_UNSIGNED_LONG, source_id, _tag++, MPI_COMM_WORLD, &request);
@@ -174,7 +178,7 @@ inline com_request com_port::receive_begin(int source_id, size_t &k)
 }
 
 template <>
-inline com_request com_port::receive_begin(int source_id, std::vector<double> &v)
+inline com_request com_port::_impl_receive_begin(int source_id, std::vector<double> &v)
 {
     MPI_Request request;
     MPI_Irecv(v.data(), v.size(), MPI_DOUBLE, source_id, _tag++, MPI_COMM_WORLD, &request);
@@ -182,7 +186,7 @@ inline com_request com_port::receive_begin(int source_id, std::vector<double> &v
 }
 
 template <>
-inline com_request com_port::receive_begin(int source_id, std::vector<size_t> &v)
+inline com_request com_port::_impl_receive_begin(int source_id, std::vector<size_t> &v)
 {
     MPI_Request request;
     MPI_Irecv(v.data(), v.size(), MPI_UNSIGNED_LONG, source_id, _tag++, MPI_COMM_WORLD, &request);
@@ -194,25 +198,25 @@ inline com_request com_port::receive_begin(int source_id, std::vector<size_t> &v
 ///////////
 
 template <>
-inline void com_port::send(int destination_id, int &k)
+inline void com_port::_impl_send(int destination_id, int &k)
 {
     MPI_Send(&k, 1, MPI_INT, destination_id, _tag++, MPI_COMM_WORLD);
 }
 
 template <>
-inline void com_port::send(int destination_id, size_t &k)
+inline void com_port::_impl_send(int destination_id, size_t &k)
 {
     MPI_Send(&k, 1, MPI_UNSIGNED_LONG, destination_id, _tag++, MPI_COMM_WORLD);
 }
 
 template <>
-inline void com_port::send(int destination_id, std::vector<double> &v)
+inline void com_port::_impl_send(int destination_id, std::vector<double> &v)
 {
     MPI_Send(v.data(), v.size(), MPI_DOUBLE, destination_id, _tag++, MPI_COMM_WORLD);
 }
 
 template <>
-inline void com_port::send(int destination_id, std::vector<size_t> &v)
+inline void com_port::_impl_send(int destination_id, std::vector<size_t> &v)
 {
     MPI_Send(v.data(), v.size(), MPI_UNSIGNED_LONG, destination_id, _tag++, MPI_COMM_WORLD);
 }
@@ -222,7 +226,7 @@ inline void com_port::send(int destination_id, std::vector<size_t> &v)
 ////////////////////////
 
 template <>
-inline com_request com_port::send_begin(int destination_id, int &k)
+inline com_request com_port::_impl_send_begin(int destination_id, int &k)
 {
     MPI_Request request;
     MPI_Isend(&k, 1, MPI_INT, destination_id, _tag++, MPI_COMM_WORLD, &request);
@@ -230,7 +234,7 @@ inline com_request com_port::send_begin(int destination_id, int &k)
 }
 
 template <>
-inline com_request com_port::send_begin(int destination_id, size_t &k)
+inline com_request com_port::_impl_send_begin(int destination_id, size_t &k)
 {
     MPI_Request request;
     MPI_Isend(&k, 1, MPI_UNSIGNED_LONG, destination_id, _tag++, MPI_COMM_WORLD, &request);
@@ -238,7 +242,7 @@ inline com_request com_port::send_begin(int destination_id, size_t &k)
 }
 
 template <>
-inline com_request com_port::send_begin(int destination_id, std::vector<double> &v)
+inline com_request com_port::_impl_send_begin(int destination_id, std::vector<double> &v)
 {
     MPI_Request request;
     MPI_Isend(v.data(), v.size(), MPI_DOUBLE, destination_id, _tag++, MPI_COMM_WORLD, &request);
@@ -246,7 +250,7 @@ inline com_request com_port::send_begin(int destination_id, std::vector<double> 
 }
 
 template <>
-inline com_request com_port::send_begin(int destination_id, std::vector<size_t> &v)
+inline com_request com_port::_impl_send_begin(int destination_id, std::vector<size_t> &v)
 {
     MPI_Request request;
     MPI_Isend(v.data(), v.size(), MPI_UNSIGNED_LONG, destination_id, _tag++, MPI_COMM_WORLD, &request);

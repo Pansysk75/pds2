@@ -32,13 +32,13 @@ struct CorpusPacket
 };
 
 template <>
-inline com_request com_port::send_begin(int destination_id, CorpusPacket &c)
+inline com_request com_port::_impl_send_begin(int destination_id, CorpusPacket &c)
 {
     return send_begin(destination_id, c.d, c.n_packet, c.y_start_index, c.y_end_index, c.Y);
 }
 
 template <>
-inline com_request com_port::receive_begin(int source_id, CorpusPacket &c)
+inline com_request com_port::_impl_receive_begin(int source_id, CorpusPacket &c)
 {
     return receive_begin(source_id, c.d, c.n_packet, c.y_start_index, c.y_end_index, c.Y);
 }
@@ -72,13 +72,13 @@ struct QueryPacket
 };
 
 template <>
-inline com_request com_port::send_begin(int destination_id, QueryPacket &c)
+inline com_request com_port::_impl_send_begin(int destination_id, QueryPacket &c)
 {
     return send_begin(destination_id, c.d, c.m_packet, c.x_start_index, c.x_end_index, c.X);
 }
 
 template <>
-inline com_request com_port::receive_begin(int source_id, QueryPacket &c)
+inline com_request com_port::_impl_receive_begin(int source_id, QueryPacket &c)
 {
     return receive_begin(source_id, c.d, c.m_packet, c.x_start_index, c.x_end_index, c.X);
 }
@@ -139,13 +139,13 @@ struct ResultPacket
 };
 
 template <>
-inline void com_port::send(int destination_id, ResultPacket &c)
+inline void com_port::_impl_send(int destination_id, ResultPacket &c)
 {
     send(destination_id, c.k, c.m_packet, c.n_packet, c.ndist, c.nidx, c.x_end_index, c.x_start_index, c.y_end_index, c.y_start_index);
 }
 
 template <>
-inline void com_port::receive(int destination_id, ResultPacket &c)
+inline void com_port::_impl_receive(int destination_id, ResultPacket &c)
 {
     receive(destination_id, c.k, c.m_packet, c.n_packet, c.ndist, c.nidx, c.x_end_index, c.x_start_index, c.y_end_index, c.y_start_index);
 }
