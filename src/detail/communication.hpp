@@ -56,7 +56,7 @@ public:
 
     // Blocking receive
     template <typename T>
-    void receive(int source_id, T &t);
+    void receive(int source_id, T &t) = delete;
 
     template <typename... P>
         requires(sizeof...(P) > 1)
@@ -69,7 +69,7 @@ public:
 
     // Non-blocking receive
     template <typename T>
-    com_request receive_begin(int source_id, T &);
+    com_request receive_begin(int source_id, T &) = delete;
 
     template <typename... P>
         requires(sizeof...(P) > 1)
@@ -83,7 +83,7 @@ public:
 
     // Blocking send
     template <typename T>
-    void send(int source_id, T &);
+    void send(int source_id, T &) = delete;
 
     template <typename... P>
         requires(sizeof...(P) > 1)
@@ -96,7 +96,7 @@ public:
 
     // Non-blocking send
     template <typename T>
-    com_request send_begin(int source_id, T &);
+    com_request send_begin(int source_id, T &) = delete;
 
     template <typename... P>
         requires(sizeof...(P) > 1)
