@@ -88,19 +88,28 @@ std::tuple<QueryPacket, CorpusPacket> random_grid(size_t m, size_t n, size_t d,
 }
 
 std::tuple<QueryPacket, CorpusPacket>
-file_packets(const std::string &query_path, const size_t m_upper_limit,
-             const std::string &corpus_path, const size_t n_upper_limit,
+file_packets(const std::string &query_path, const size_t query_start_idx,  const size_t query_end_idx,
+             const std::string &corpus_path, const size_t corpus_start_idx,  const size_t corpus_end_idx,
              const size_t d_upper_limit)
 {
+
     auto [X, m, d] =
-        load_csv<double>(query_path, 0, m_upper_limit, d_upper_limit, true);
+        load_csv<double>(query_path, query_start_idx, query_end_idx, d_upper_limit, true);
 
     auto [Y, n, d_ignore] =
-        load_csv<double>(corpus_path, 0, n_upper_limit, d_upper_limit, true);
+        load_csv<double>(corpus_path, corpus_start_idx, corpus_end_idx, d_upper_limit, true);
 
-    return std::make_tuple(QueryPacket(m, d, 0, m, std::move(X)),
-                           CorpusPacket(n, d, 0, n, std::move(Y)));
+    return std::make_tuple(QueryPacket(m, d, query_start_idx, query_end_idx, std::move(X)),
+                           CorpusPacket(n, d, corpus_start_idx, corpus_end_idx, std::move(Y)));
 }
+
+// Use when query and corpus are the same
+std::tuple<QueryPacket, CorpusPacket>
+file_packets(const std::string &file_path, const size_t start_idx,  const size_t end_idx,
+             const size_t d_upper_limit){
+                return file_packets(file_path, start_idx, end_idx, file_path, start_idx, end_idx, d_upper_limit); 
+             }
+
 
 ResultPacket SyskoSimulation(const QueryPacket &query,
                              const CorpusPacket &corpus, size_t k,
