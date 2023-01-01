@@ -11,46 +11,20 @@ struct initial_work_data
 {
     // Must be passed to every worker proccess, stores
     // data that is not known at compile time
-    int n; // number of d-dimensional points in each packet
-    int d; // dimensionality of point-space
-    int k; // number of nearest neighbours that should be found
+    size_t n; // number of d-dimensional points in each packet
+    size_t d; // dimensionality of point-space
+    size_t k; // number of nearest neighbours that should be found
 };
 
-// Could be made to take advantage of existing "com_port::send(int&, int)"
 template <>
-void com_port::send(initial_work_data &d, int receiver_rank)
+void com_port::_impl_send(int destination_id, initial_work_data &d)
 {
-    MPI_Send(&d.n, 1, MPI_INT, receiver_rank, 0, MPI_COMM_WORLD);
-    MPI_Send(&d.d, 1, MPI_INT, receiver_rank, 1, MPI_COMM_WORLD);
-    MPI_Send(&d.k, 1, MPI_INT, receiver_rank, 2, MPI_COMM_WORLD);
+    send(destination_id, d.n, d.d, d.k);
 }
-
 template <>
-com_request com_port::send_begin(initial_work_data &d, int receiver_rank)
+void com_port::_impl_receive(int source_id, initial_work_data &d)
 {
-    com_request requests(3);
-    MPI_Isend(&d.n, 1, MPI_INT, receiver_rank, 0, MPI_COMM_WORLD, &requests[0]);
-    MPI_Isend(&d.d, 1, MPI_INT, receiver_rank, 1, MPI_COMM_WORLD, &requests[1]);
-    MPI_Isend(&d.k, 1, MPI_INT, receiver_rank, 2, MPI_COMM_WORLD, &requests[2]);
-    return requests;
-}
-
-template <>
-void com_port::receive(initial_work_data &d, int sender_rank)
-{
-    MPI_Recv(&d.n, 1, MPI_INT, sender_rank, 0, MPI_COMM_WORLD, nullptr);
-    MPI_Recv(&d.d, 1, MPI_INT, sender_rank, 1, MPI_COMM_WORLD, nullptr);
-    MPI_Recv(&d.k, 1, MPI_INT, sender_rank, 2, MPI_COMM_WORLD, nullptr);
-}
-
-template <>
-com_request com_port::receive_begin(initial_work_data &d, int sender_rank)
-{
-    com_request requests(3);
-    MPI_Irecv(&d.n, 1, MPI_INT, sender_rank, 0, MPI_COMM_WORLD, &requests[0]);
-    MPI_Irecv(&d.d, 1, MPI_INT, sender_rank, 1, MPI_COMM_WORLD, &requests[1]);
-    MPI_Irecv(&d.k, 1, MPI_INT, sender_rank, 2, MPI_COMM_WORLD, &requests[2]);
-    return com_request{requests};
+    receive(source_id, d.n, d.d, d.k);
 }
 
 class worker
@@ -82,7 +56,7 @@ public:
         // The master mpi process is responsible for transfering initial
         // data to all workers. Then, the workers will exchange data in a
         // cyclical pattern, until all workers have processed all data.
-        com.receive(init_data, MASTER_RANK);
+        com.receive(MASTER_RANK, init_data);
         init();
     }
 
@@ -161,8 +135,8 @@ public:
 
             // Start sending the part we just proccessed
             // Start receiving the part we will proccess later
-            com_request send_req = com.send_begin(corpus, next_rank);
-            com_request recv_req = com.receive_begin(receiving_corpus, prev_rank);
+            com_request send_req = com.send_begin(next_rank, corpus);
+            com_request recv_req = com.receive_begin(prev_rank, receiving_corpus);
             // com.send(corpus, next_rank);
             // com.receive(receiving_corpus, prev_rank);
 
@@ -191,8 +165,13 @@ public:
         results = combineKnnResultsSameX(batch_result, results);
         deb_v();
 
+        MPI_Barrier(MPI_COMM_WORLD);
         // Work finished, send results to master process
         if (com.rank() != MASTER_RANK)
-            com.send(results, MASTER_RANK);
+        {
+            com.send(MASTER_RANK, results);
+        }
+
+        MPI_Barrier(MPI_COMM_WORLD);
     }
 };
