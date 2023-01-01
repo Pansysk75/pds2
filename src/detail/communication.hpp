@@ -110,7 +110,7 @@ public:
 
     // Waits for a non-blocking communication to complete
     template <std::convertible_to<com_request>... P>
-        requires(sizeof...(P) > 0)
+        requires(sizeof...(P) > 1)
     void wait(P &...req)
     {
         (wait(req), ...);
@@ -157,6 +157,12 @@ inline void com_port::_impl_receive(int source_id, std::vector<size_t> &v)
     MPI_Recv(v.data(), v.size(), MPI_UNSIGNED_LONG, source_id, _tag++, MPI_COMM_WORLD, nullptr);
 }
 
+template <>
+inline void com_port::_impl_receive(int source_id, std::vector<char> &v)
+{
+    MPI_Recv(v.data(), v.size(), MPI_CHAR, source_id, _tag++, MPI_COMM_WORLD, nullptr);
+}
+
 /////////////////////////////
 /// NON-BLOCKING RECEIVE ///
 ///////////////////////////
@@ -193,6 +199,15 @@ inline com_request com_port::_impl_receive_begin(int source_id, std::vector<size
     return com_request{request};
 }
 
+template <>
+inline com_request com_port::_impl_receive_begin(int source_id, std::vector<char> &v)
+{
+    MPI_Request request;
+    MPI_Irecv(v.data(), v.size(), MPI_CHAR, source_id, _tag++, MPI_COMM_WORLD, &request);
+    return com_request{request};
+}
+
+
 /////////////
 /// SEND ///
 ///////////
@@ -219,6 +234,12 @@ template <>
 inline void com_port::_impl_send(int destination_id, std::vector<size_t> &v)
 {
     MPI_Send(v.data(), v.size(), MPI_UNSIGNED_LONG, destination_id, _tag++, MPI_COMM_WORLD);
+}
+
+template <>
+inline void com_port::_impl_send(int destination_id, std::vector<char> &v)
+{
+    MPI_Send(v.data(), v.size(), MPI_CHAR, destination_id, _tag++, MPI_COMM_WORLD);
 }
 
 //////////////////////////
@@ -254,5 +275,13 @@ inline com_request com_port::_impl_send_begin(int destination_id, std::vector<si
 {
     MPI_Request request;
     MPI_Isend(v.data(), v.size(), MPI_UNSIGNED_LONG, destination_id, _tag++, MPI_COMM_WORLD, &request);
+    return com_request{request};
+}
+
+template <>
+inline com_request com_port::_impl_send_begin(int destination_id, std::vector<char> &v)
+{
+    MPI_Request request;
+    MPI_Isend(v.data(), v.size(), MPI_CHAR, destination_id, _tag++, MPI_COMM_WORLD, &request);
     return com_request{request};
 }
