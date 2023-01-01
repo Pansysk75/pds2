@@ -3,3 +3,4 @@ obj
 bin
 OpenBLAS
 old
+perf.data*

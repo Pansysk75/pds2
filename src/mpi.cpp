@@ -14,13 +14,15 @@ void master_main(mpi_process &process)
 
     com_port com(process.world_rank, process.world_size);
 
-    int part_size = 20000;
+    size_t part_size = 10; // # points per packet
+    size_t d = 2;          // 2 dimensional points
+    size_t k = 3;          // # nearest neighbours
 
     // Send initial data to all workers
-    initial_work_data init_data{part_size, 2, 3};
+    initial_work_data init_data{part_size, d, k};
     for (int i = 1; i < process.world_size; i++)
     {
-        com.send(init_data, i);
+        com.send(i, init_data);
     }
     // Initialize local worker
     worker w(process.world_rank, process.world_size, init_data);
@@ -32,8 +34,9 @@ void master_main(mpi_process &process)
     diffProcRes.push_back(w.results);
     for (int i = 1; i < process.world_size; i++)
     {
-        ResultPacket result(init_data.k);
-        com.receive(result, i);
+        std::cout << process.world_rank << "GotResult" << std::endl;
+        ResultPacket result(part_size * k);
+        com.receive(i, result);
         diffProcRes.push_back(result);
     }
 
@@ -48,7 +51,6 @@ void master_main(mpi_process &process)
 
 void slave_main(mpi_process &process)
 {
-
     worker w(process.world_rank, process.world_size);
     w.work();
 }
