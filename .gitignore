@@ -4,3 +4,4 @@ bin
 OpenBLAS
 old
 perf.data*
+datasets
