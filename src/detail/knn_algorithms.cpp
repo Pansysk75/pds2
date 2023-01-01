@@ -43,6 +43,13 @@ ResultPacket knn_simple(const QueryPacket &query, const CorpusPacket &corpus,
                 distance += (query.X[d * x + i] - corpus.Y[d * y + i]) *
                             (query.X[d * x + i] - corpus.Y[d * y + i]);
             }
+
+            if(same_file) {
+                if(query.x_start_index + x == corpus.y_start_index + y){
+                    distance = std::numeric_limits<double>::max();
+                }
+            }
+
             idx_dist_vec[y] = {distance, y + corpus.y_start_index};
         }
 
@@ -109,6 +116,41 @@ ResultPacket knn_blas(const QueryPacket &query,
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, query.m_packet,
                 corpus.n_packet, corpus.d, -2.0, query.X.data(), query.d,
                 corpus.Y.data(), corpus.d, 1.0, D.data(), corpus.n_packet);
+
+    if(same_file) {
+
+    // they are overlapping
+        if(corpus.y_start_index < query.x_end_index&& query.x_start_index < corpus.y_end_index) {
+            for(size_t i = 0; i < query.m_packet; i++) {
+                for(size_t j = 0; j < corpus.n_packet; j++) {
+                    if(query.x_start_index + i == corpus.y_start_index + j)
+                        D[idx(i, j, corpus.n_packet)] = std::numeric_limits<double>::max();
+                }
+            }
+        }
+    }
+
+/*
+        auto ys = corpus.y_start_index;
+        auto ye = corpus.y_end_index;
+        auto xs = query.x_start_index;
+        auto xe = query.x_end_index;
+
+        if(ys > xe || xs > ye) {
+            // no overlap
+        } else {
+            // overlap
+            auto os = std::max(xs, ys);
+            auto oe = std::min(xe, ye);
+
+            if(xe - xs < ys - ye) {
+                // x is shorter
+                for(size_t )
+            } else {
+                // y is shorter
+            }
+        }
+*/
 
     res.nidx.resize(query.m_packet * k);
     res.ndist.resize(query.m_packet * k);
@@ -179,8 +221,15 @@ ResultPacket knn_dynamic(const QueryPacket &query, const CorpusPacket &corpus, s
                 distance += (query.X[d * x + i] - corpus.Y[d * y + i]) *
                             (query.X[d * x + i] - corpus.Y[d * y + i]);
             }
+            
+            if(same_file) {
+                if(query.x_start_index + x == corpus.y_start_index + y){
+                    distance = std::numeric_limits<double>::max();
+                }
+            }
+
             heap.insert({distance, y + res.y_start_index});
-        }
+        }    
 
         res.nidx.resize(query.m_packet * k);
         res.ndist.resize(query.m_packet * k);
