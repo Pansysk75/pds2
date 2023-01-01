@@ -6,6 +6,7 @@
 #include "detail/utilities.hpp"
 #include "detail/fileio.hpp"
 #include "detail/testingknn.hpp"
+#include "detail/mpi_process.hpp"
 
 bool compareResults(ResultPacket &p1, ResultPacket &p2) 
 {
@@ -30,7 +31,7 @@ bool compareResults(ResultPacket &p1, ResultPacket &p2)
   return flag;
 }
 
-void test(size_t size, size_t dim, size_t k, size_t idx_start, size_t idx_end) 
+void test_knn(size_t size, size_t dim, size_t k, size_t idx_start, size_t idx_end)
 {
 
   utilities::timer timer;
@@ -79,10 +80,92 @@ void test(size_t size, size_t dim, size_t k, size_t idx_start, size_t idx_end)
   std::cout << "Equality Test (1 vs 4): " << eq14 << std::endl;
 }
 
+void test_com(mpi_process &proc)
+{
+    int id = proc.world_rank;
+    int world_size = proc.world_size;
+
+    com_port com(id, world_size);
+
+    std::vector<double> data(10, id);
+    size_t data2 = id;
+
+    std::vector<double> recv_data(10);
+    size_t recv_data2;
+
+    // send stuff in a circle
+    int next_rank = (id + 1) % world_size;
+    int prev_rank = (id + world_size - 1) % world_size;
+
+    std::cout << "\n\nStarting com test" << std::endl;
+
+    std::cout << id << ": Sending to " << next_rank << ", receiving from " << prev_rank << std::endl;
+
+    for (int i = 0; i < world_size + 2; i++)
+    { // Repeat many times to expose potential issues
+        // Data should do a full circle + 1
+        com_request recv_req = com.receive_begin(prev_rank, recv_data, recv_data2);
+        com_request send_req = com.send_begin(next_rank, data, data2);
+
+        com.wait(send_req, recv_req);
+        std::swap(data, recv_data);
+        std::swap(data2, recv_data2);
+    }
+
+    std::cout << id << ": ";
+    for (auto &elem : recv_data)
+        std::cout << elem << " ";
+    std::cout << recv_data2 << std::endl;
+}
+
+void test_com(mpi_process &proc)
+{
+    int id = proc.world_rank;
+    int world_size = proc.world_size;
+
+    com_port com(id, world_size);
+
+    std::vector<double> data(10, id);
+    size_t data2 = id;
+
+    std::vector<double> recv_data(10);
+    size_t recv_data2;
+
+    // send stuff in a circle
+    int next_rank = (id + 1) % world_size;
+    int prev_rank = (id + world_size - 1) % world_size;
+
+    std::cout << "\n\nStarting com test" << std::endl;
+
+    std::cout << id << ": Sending to " << next_rank << ", receiving from " << prev_rank << std::endl;
+
+    for (int i = 0; i < world_size + 2; i++)
+    { // Repeat many times to expose potential issues
+        // Data should do a full circle + 1
+        com_request recv_req = com.receive_begin(prev_rank, recv_data, recv_data2);
+        com_request send_req = com.send_begin(next_rank, data, data2);
+
+        com.wait(send_req, recv_req);
+        std::swap(data, recv_data);
+        std::swap(data2, recv_data2);
+    }
+
+    std::cout << id << ": ";
+    for (auto &elem : recv_data)
+        std::cout << elem << " ";
+    std::cout << recv_data2 << std::endl;
+}
+
 int main() 
 {
 
-  test(20000, 2, 5, 0, 20000);
+    mpi_process proc;
 
-  return 0;
+    test_com(proc);
+
+    if (proc.world_rank == 0)
+    {
+        test_knn(2000, 2, 5, 0, 2000);
+    }
+    return 0;
 }
