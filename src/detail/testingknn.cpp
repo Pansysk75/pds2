@@ -93,10 +93,10 @@ file_packets(const std::string &query_path, const size_t m_upper_limit,
              const size_t d_upper_limit)
 {
     auto [X, m, d] =
-        load_csv<double>(query_path, m_upper_limit, d_upper_limit, true, true);
+        load_csv<double>(query_path, 0, m_upper_limit, d_upper_limit, true);
 
     auto [Y, n, d_ignore] =
-        load_csv<double>(corpus_path, n_upper_limit, d_upper_limit, true, true);
+        load_csv<double>(corpus_path, 0, n_upper_limit, d_upper_limit, true);
 
     return std::make_tuple(QueryPacket(m, d, 0, m, std::move(X)),
                            CorpusPacket(n, d, 0, n, std::move(Y)));

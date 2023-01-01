@@ -17,8 +17,8 @@
 template <typename T>
 std::tuple<std::vector<T>, size_t, size_t> load_csv(
     const std::string& filename, 
-    const size_t line_upper_limit, const size_t el_upper_limit, 
-    const bool skip_first_line, const bool skip_first_field
+    const size_t line_begin, const size_t line_end, 
+    const size_t el_upper_limit, const bool skip_first_field
 ) {
     std::vector<T> data;
 
@@ -32,11 +32,13 @@ std::tuple<std::vector<T>, size_t, size_t> load_csv(
     std::ifstream file(filename);
     if (file.is_open())
     {
-        // skip the first line
-        if(skip_first_line)
+        // skip first "line_begin" lines
+        for(unsigned int _= 0; _<line_begin; _++){
             file.ignore(std::numeric_limits<std::streamsize>::max(), file.widen('\n'));
+        }
+        const size_t n_lines = line_end - line_begin;
         std::string line;
-        while (std::getline(file, line) && lines_got++ < line_upper_limit)
+        while (std::getline(file, line) && lines_got++ < n_lines)
         {
             if(skip_first_field)
                 line = line.substr(line.find_first_of(",") + 1);
@@ -59,10 +61,10 @@ std::tuple<std::vector<T>, size_t, size_t> load_csv(
 
 // instanciate the template for common numeric types
 
-template std::tuple<std::vector<int>, size_t, size_t> load_csv<int>(const std::string& filename, const size_t line_upper_limit, const size_t el_upper_limit, const bool skip_first_line, const bool skip_first_field);
-template std::tuple<std::vector<size_t>, size_t, size_t> load_csv<size_t>(const std::string& filename, const size_t line_upper_limit, const size_t el_upper_limit, const bool skip_first_line, const bool skip_first_field);
-template std::tuple<std::vector<float>, size_t, size_t> load_csv<float>(const std::string& filename, const size_t line_upper_limit, const size_t el_upper_limit, const bool skip_first_line, const bool skip_first_field);
-template std::tuple<std::vector<double>, size_t, size_t> load_csv<double>(const std::string& filename, const size_t line_upper_limit, const size_t el_upper_limit, const bool skip_first_line, const bool skip_first_field);
+template std::tuple<std::vector<int>, size_t, size_t>    load_csv<int>   (const std::string& filename,const size_t line_begin, const size_t line_end, const size_t el_upper_limit, const bool skip_first_field);
+template std::tuple<std::vector<size_t>, size_t, size_t> load_csv<size_t>(const std::string& filename,const size_t line_begin, const size_t line_end, const size_t el_upper_limit, const bool skip_first_field);
+template std::tuple<std::vector<float>, size_t, size_t>  load_csv<float> (const std::string& filename,const size_t line_begin, const size_t line_end, const size_t el_upper_limit, const bool skip_first_field);
+template std::tuple<std::vector<double>, size_t, size_t> load_csv<double>(const std::string& filename,const size_t line_begin, const size_t line_end, const size_t el_upper_limit, const bool skip_first_field);
 
 std::vector<double> import_data(int idx_start, int idx_end, int dim){
     // Imitates importing data
