@@ -33,12 +33,12 @@ std::tuple<std::vector<T>, size_t, size_t> load_csv(
     if (file.is_open())
     {
         // skip first "line_begin" lines
-        for(unsigned int _= 0; _<line_begin; _++){
+        for(unsigned int _= 0; _<line_begin+1; _++){
             file.ignore(std::numeric_limits<std::streamsize>::max(), file.widen('\n'));
         }
         const size_t n_lines = line_end - line_begin;
         std::string line;
-        while (std::getline(file, line) && lines_got++ < n_lines)
+        while (std::getline(file, line) && lines_got < n_lines)
         {
             if(skip_first_field)
                 line = line.substr(line.find_first_of(",") + 1);
@@ -46,12 +46,14 @@ std::tuple<std::vector<T>, size_t, size_t> load_csv(
             std::stringstream lineStream(line);
             std::string value;
             size_t elements_got = 0;
-            while (std::getline(lineStream, value, ',') && elements_got++ < el_upper_limit)
+            while (std::getline(lineStream, value, ',') && elements_got < el_upper_limit)
             {
                 T convertedValue;
                 std::stringstream(value) >> convertedValue;
                 data.push_back(convertedValue);
+                elements_got++;
             }
+            lines_got++;
         }
     }
 

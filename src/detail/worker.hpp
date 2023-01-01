@@ -4,6 +4,7 @@
 #include "knn_utils.hpp"
 #include "knn_algorithms.hpp"
 #include "fileio.hpp"
+#include "testingknn.hpp"
 
 #define MASTER_RANK 0
 
@@ -11,20 +12,31 @@ struct initial_work_data
 {
     // Must be passed to every worker proccess, stores
     // data that is not known at compile time
-    size_t n; // number of d-dimensional points in each packet
+    std::vector<char> filename;
+    size_t idx_start;
+    size_t idx_end;
+    size_t max_size;
     size_t d; // dimensionality of point-space
     size_t k; // number of nearest neighbours that should be found
+
+    initial_work_data(std::string filename, size_t idx_start, size_t idx_end, size_t max_size, size_t d, size_t k)
+    :filename(filename.begin(), filename.end()),
+    idx_start(idx_start), idx_end(idx_end),max_size(max_size), d(d),k(k){}
+
+    initial_work_data(std::vector<char> filename, size_t idx_start, size_t idx_end, size_t max_size, size_t d, size_t k)
+    :filename(filename), 
+    idx_start(idx_start),idx_end(idx_end), max_size(max_size), d(d),k(k){}
 };
 
 template <>
 void com_port::_impl_send(int destination_id, initial_work_data &d)
 {
-    send(destination_id, d.n, d.d, d.k);
+    send(destination_id, d.filename, d.idx_start, d.idx_end, d.max_size, d.d, d.k);
 }
 template <>
 void com_port::_impl_receive(int source_id, initial_work_data &d)
 {
-    receive(source_id, d.n, d.d, d.k);
+    receive(source_id, d.filename, d.idx_start, d.idx_end, d.max_size, d.d, d.k);
 }
 
 class worker
@@ -50,7 +62,8 @@ public:
     ResultPacket results;
 
     worker(int rank, int world_size)
-        : com(rank, world_size)
+        : com(rank, world_size),
+        init_data(std::vector<char>(128),0,0,0,0,0)
     {
         // Initialize worker and receive inital data / corpus set
         // The master mpi process is responsible for transfering initial
@@ -68,22 +81,23 @@ public:
 
     void init()
     {
-        int size = init_data.n;
-        int dim = init_data.d;
+        int max_size = init_data.max_size;
+        int d = init_data.d;
 
-        int idx_start = com.rank() * size;
-        int idx_end = (com.rank() + 1) * size;
+        int start_idx = init_data.idx_start;
+        int end_idx = init_data.idx_end;
 
-        query = QueryPacket(size, dim, idx_start, idx_end);
-        query.X = import_data(idx_start, idx_end, dim);
+        std::string filename(init_data.filename.begin(), init_data.filename.end());
 
-        corpus = CorpusPacket(size, dim, idx_start, idx_end);
-        corpus.Y = import_data(idx_start, idx_end, dim);
+        deb(filename + " " + std::to_string(start_idx) + " " + std::to_string(end_idx));
 
-        receiving_corpus = CorpusPacket(0, 0, 0, 0);
-        receiving_corpus.Y.resize(size * dim);
+        auto [temp_query, temp_corpus] = file_packets(filename, start_idx, end_idx, d);
+        query = std::move(temp_query);
+        corpus = std::move(temp_corpus);
 
-        // results = ResultPacket(size, 0, init_data.k, idx_start, idx_end, idx_start, idx_end);
+        // query.X.resize(max_size*d);
+        corpus.Y.resize(max_size*d);
+        receiving_corpus = CorpusPacket(max_size, d, 0, 0);
 
         results = ResultPacket(0, 0, 0, 0, 0, 0, 0);
 
@@ -124,29 +138,29 @@ public:
     void work()
     {
 
+
         for (int i = 0; i < com.world_size() - 1; i++)
         {
 
             // Debug s*&.. stuff
             deb("Started iteration " + std::to_string(i));
+            deb_v();
 
             int next_rank = (com.rank() + 1) % com.world_size();
             int prev_rank = (com.rank() + com.world_size() - 1) % com.world_size();
 
             // Start sending the part we just proccessed
             // Start receiving the part we will proccess later
-            com_request send_req = com.send_begin(next_rank, corpus);
-            com_request recv_req = com.receive_begin(prev_rank, receiving_corpus);
-            // com.send(corpus, next_rank);
-            // com.receive(receiving_corpus, prev_rank);
+            com_request send_req = com.send_begin(prev_rank, corpus);
+            com_request recv_req = com.receive_begin(next_rank, receiving_corpus);
 
             // Work on working set
             ResultPacket batch_result = knn_blas(query, corpus, init_data.k);
             // Combine this result with previous results
-            if (results.n_packet == 0)
-                results = std::move(batch_result);
-            else
-                results = combineKnnResultsSameX(batch_result, results);
+    
+   
+            results = combineKnnResultsSameX(results, batch_result);
+            
 
             // debug worker state
             deb_v();
@@ -155,6 +169,8 @@ public:
             com.wait(send_req);
             com.wait(recv_req);
 
+            deb("Finished transmission #" + std::to_string(i));
+
             // Update query_set with received set (using std::swap is the
             // equivelant of swapping the pointers of two C arrays)
             std::swap(corpus, receiving_corpus);
@@ -162,16 +178,14 @@ public:
         // Work on last batch
         ResultPacket batch_result = knn_blas(query, corpus, init_data.k);
         // Combine this result with previous results
-        results = combineKnnResultsSameX(batch_result, results);
+        results = combineKnnResultsSameX(results, batch_result);
         deb_v();
 
-        MPI_Barrier(MPI_COMM_WORLD);
         // Work finished, send results to master process
         if (com.rank() != MASTER_RANK)
         {
             com.send(MASTER_RANK, results);
         }
 
-        MPI_Barrier(MPI_COMM_WORLD);
     }
 };

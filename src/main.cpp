@@ -94,7 +94,9 @@ int main(int argc, char **argv)
 
         debug = std::stoi(argv[8]) == 1;
 
-        const auto [query, corpus] = file_packets(query_path, m_upper_limit, corpus_path, n_upper_limit, d_upper_limit);
+        const auto [query, corpus] = file_packets(query_path, 0, m_upper_limit, 
+                                                  corpus_path, 0, n_upper_limit, d_upper_limit);
+
         const ResultPacket result = runDistrData(query, corpus, k, 12, 12);
 
         print_results(query, corpus, result, k);
