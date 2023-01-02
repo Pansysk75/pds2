@@ -1,6 +1,5 @@
-
-
 #pragma once
+
 #include "communication.hpp"
 #include "knn_structs.hpp"
 #include "knn_utils.hpp"
@@ -21,13 +20,9 @@ struct initial_work_data
     size_t d; // dimensionality of point-space
     size_t k; // number of nearest neighbours that should be found
 
-    initial_work_data(std::string filename, size_t idx_start, size_t idx_end, size_t max_size, size_t d, size_t k)
-    :filename(filename.begin(), filename.end()),
-    idx_start(idx_start), idx_end(idx_end),max_size(max_size), d(d),k(k){}
+    initial_work_data(std::string filename, size_t idx_start, size_t idx_end, size_t max_size, size_t d, size_t k);
 
-    initial_work_data(std::vector<char> filename, size_t idx_start, size_t idx_end, size_t max_size, size_t d, size_t k)
-    :filename(filename), 
-    idx_start(idx_start),idx_end(idx_end), max_size(max_size), d(d),k(k){}
+    initial_work_data(std::vector<char> filename, size_t idx_start, size_t idx_end, size_t max_size, size_t d, size_t k);
 };
 
 // Describe how to com_port::send this class

@@ -6,10 +6,17 @@
 #include "testingknn.hpp"
 #include "worker.hpp"
 
+initial_work_data::initial_work_data(std::string filename, size_t idx_start, size_t idx_end, size_t max_size, size_t d, size_t k)
+    : filename(filename.begin(), filename.end()),
+      idx_start(idx_start), idx_end(idx_end), max_size(max_size), d(d), k(k) {}
+
+initial_work_data::initial_work_data(std::vector<char> filename, size_t idx_start, size_t idx_end, size_t max_size, size_t d, size_t k)
+    : filename(filename),
+      idx_start(idx_start), idx_end(idx_end), max_size(max_size), d(d), k(k) {}
 
 worker::worker(int rank, int world_size)
     : com(rank, world_size),
-    init_data(std::vector<char>(128),0,0,0,0,0)
+      init_data(std::vector<char>(128), 0, 0, 0, 0, 0)
 {
     com.receive(MASTER_RANK, init_data);
     initialize();
@@ -38,7 +45,7 @@ void worker::initialize()
     corpus = std::move(temp_corpus);
 
     // query.X.resize(max_size*d);
-    corpus.Y.resize(max_size*d);
+    corpus.Y.resize(max_size * d);
     receiving_corpus = CorpusPacket(max_size, d, 0, 0);
 
     results = ResultPacket(0, 0, 0, 0, 0, 0, 0);
@@ -48,7 +55,8 @@ void worker::initialize()
 
 void worker::print_debug()
 {
-    std::cout << "\n" << com.rank() << ": ";
+    std::cout << "\n"
+              << com.rank() << ": ";
     std::cout << "\tquery: " << query;
     std::cout << "\n\tcorpus: " << corpus;
     std::cout << "\n\tresult: " << results << std::endl;
@@ -56,12 +64,12 @@ void worker::print_debug()
 
 void worker::print_debug(std::string str)
 {
-    std::cout << "\n" << com.rank() << ": " << str << std::endl;
+    std::cout << "\n"
+              << com.rank() << ": " << str << std::endl;
 }
 
 void worker::work()
 {
-
 
     for (int i = 0; i < com.world_size() - 1; i++)
     {
@@ -81,9 +89,7 @@ void worker::work()
         ResultPacket batch_result = knn_blas(query, corpus, init_data.k);
         // Combine this result with previous results
 
-
         results = combineKnnResultsSameX(results, batch_result);
-        
 
         // debug worker state
         print_debug();
@@ -109,6 +115,4 @@ void worker::work()
     {
         com.send(MASTER_RANK, results);
     }
-
 }
-

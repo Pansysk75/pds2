@@ -1,5 +1,8 @@
 #include "knn_structs.hpp"
+
 #include <tuple>
+#include <vector>
+
 
 size_t idx(size_t i, size_t j, size_t ld);
 

@@ -1,3 +1,4 @@
+#include "knn_utils.hpp"
 #include "knn_structs.hpp"
 
 #include <algorithm>
@@ -5,11 +6,10 @@
 #include <numeric>
 #include <tuple>
 
-
-size_t idx(size_t i, size_t j, size_t ld){
-    return ((i)*(ld))+(j);
+size_t idx(size_t i, size_t j, size_t ld)
+{
+    return i * ld + j;
 }
-
 
 // they need to be distances of
 // SAME query points

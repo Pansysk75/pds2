@@ -2,6 +2,7 @@
 
 #include <mpi/mpi.h>
 #include <vector>
+#include <iostream>
 
 class com_request : public std::vector<MPI_Request>
 {
@@ -120,7 +121,7 @@ public:
     {
         for (auto &request_elem : request)
         {
-            MPI_Wait(&request_elem, nullptr);
+            MPI_Wait(&request_elem, MPI_STATUS_IGNORE);
         }
     };
 };
@@ -136,31 +137,31 @@ public:
 template <>
 inline void com_port::_impl_receive(int source_id, int &k)
 {
-    MPI_Recv(&k, 1, MPI_INT, source_id, _tag++, MPI_COMM_WORLD, nullptr);
+    MPI_Recv(&k, 1, MPI_INT, source_id, _tag++, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 }
 
 template <>
 inline void com_port::_impl_receive(int source_id, size_t &k)
 {
-    MPI_Recv(&k, 1, MPI_UNSIGNED_LONG, source_id, _tag++, MPI_COMM_WORLD, nullptr);
+    MPI_Recv(&k, 1, MPI_UNSIGNED_LONG, source_id, _tag++, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 }
 
 template <>
 inline void com_port::_impl_receive(int source_id, std::vector<double> &v)
 {
-    MPI_Recv(v.data(), v.size(), MPI_DOUBLE, source_id, _tag++, MPI_COMM_WORLD, nullptr);
+    MPI_Recv(v.data(), v.size(), MPI_DOUBLE, source_id, _tag++, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 }
 
 template <>
 inline void com_port::_impl_receive(int source_id, std::vector<size_t> &v)
 {
-    MPI_Recv(v.data(), v.size(), MPI_UNSIGNED_LONG, source_id, _tag++, MPI_COMM_WORLD, nullptr);
+    MPI_Recv(v.data(), v.size(), MPI_UNSIGNED_LONG, source_id, _tag++, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 }
 
 template <>
 inline void com_port::_impl_receive(int source_id, std::vector<char> &v)
 {
-    MPI_Recv(v.data(), v.size(), MPI_CHAR, source_id, _tag++, MPI_COMM_WORLD, nullptr);
+    MPI_Recv(v.data(), v.size(), MPI_CHAR, source_id, _tag++, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 }
 
 /////////////////////////////

@@ -61,9 +61,9 @@ int main(int argc, char **argv)
         size_t m = std::stoi(argv[4]);
 
         const auto [query, corpus, k] = regual_grid(s, d, m);
-        const ResultPacket result = runDistrData(query, corpus, k, 12, 12);
+        //const ResultPacket result = runDistrData(query, corpus, k, 12, 12);
 
-        print_results(query, corpus, result, k);
+        //print_results(query, corpus, result, k);
     }
     else if (std::string(argv[1]) == "random")
     {
@@ -74,9 +74,9 @@ int main(int argc, char **argv)
 
 
         const auto [query, corpus] = random_grid(m, n, d, k);
-        const ResultPacket result = runDistrData(query, corpus, k, 12, 12);
+        //const ResultPacket result = runDistrData(query, corpus, k, 12, 12);
 
-        print_results(query, corpus, result, k);
+        //print_results(query, corpus, result, k);
     }
     else if (std::string(argv[1]) == "file")
     {
@@ -93,9 +93,9 @@ int main(int argc, char **argv)
         const auto [query, corpus] = file_packets(query_path, 0, m_upper_limit, 
                                                   corpus_path, 0, n_upper_limit, d_upper_limit);
 
-        const ResultPacket result = runDistrData(query, corpus, k, 12, 12);
+        //const ResultPacket result = runDistrData(query, corpus, k, 12, 12);
 
-        print_results(query, corpus, result, k);
+        //print_results(query, corpus, result, k);
     }
     else
     {
