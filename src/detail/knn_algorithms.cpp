@@ -1,9 +1,11 @@
 #include "knn_structs.hpp"
-#include "global_includes.hpp"
+#include "knn_utils.hpp"
 #include "bounded_max_heap.hpp"
 #include <cblas.h>
 #include <numeric>
 #include <algorithm>
+
+#define SAME_FILE
 
 ResultPacket knn_simple(const QueryPacket &query, const CorpusPacket &corpus,
                         size_t k_arg)
@@ -44,11 +46,11 @@ ResultPacket knn_simple(const QueryPacket &query, const CorpusPacket &corpus,
                             (query.X[d * x + i] - corpus.Y[d * y + i]);
             }
 
-            if(same_file) {
-                if(query.x_start_index + x == corpus.y_start_index + y){
-                    distance = std::numeric_limits<double>::max();
-                }
-            }
+#ifdef SAME_FILE
+            if(query.x_start_index + x == corpus.y_start_index + y){
+                distance = std::numeric_limits<double>::max();
+            }     
+#endif
 
             idx_dist_vec[y] = {distance, y + corpus.y_start_index};
         }
@@ -117,8 +119,7 @@ ResultPacket knn_blas(const QueryPacket &query,
                 corpus.n_packet, corpus.d, -2.0, query.X.data(), query.d,
                 corpus.Y.data(), corpus.d, 1.0, D.data(), corpus.n_packet);
 
-    if(same_file) {
-
+#ifdef SAME_FILE
     // they are overlapping
         if(corpus.y_start_index < query.x_end_index&& query.x_start_index < corpus.y_end_index) {
             for(size_t i = 0; i < query.m_packet; i++) {
@@ -128,7 +129,7 @@ ResultPacket knn_blas(const QueryPacket &query,
                 }
             }
         }
-    }
+#endif
 
 /*
         auto ys = corpus.y_start_index;
@@ -222,11 +223,11 @@ ResultPacket knn_dynamic(const QueryPacket &query, const CorpusPacket &corpus, s
                             (query.X[d * x + i] - corpus.Y[d * y + i]);
             }
             
-            if(same_file) {
+#ifdef SAME_FILE
                 if(query.x_start_index + x == corpus.y_start_index + y){
                     distance = std::numeric_limits<double>::max();
                 }
-            }
+#endif
 
             heap.insert({distance, y + res.y_start_index});
         }    

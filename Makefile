@@ -4,8 +4,20 @@ BIN_DIR = bin/
 OBJ_DIR = obj/
 SRC_DIR = src/
 
-CFLAGS = -Wall -g -std=c++20 -lblas -O3 
-LFLAGS = -Wall -g -std=c++20 -lblas -O3 
+DEBUG ?= 0
+ifeq ($(DEBUG), 1)
+    CFLAGS = -Wall -std=c++20 -lblas -g -O0 -DDEBUG
+	LFLAGS = -Wall -std=c++20 -lblas -g -O0 -DDEBUG
+	OBJ_DIR = obj_debug/
+	BIN_DIR = bin_debug/
+
+else
+    CFLAGS = -Wall -std=c++20 -lblas
+	LFLAGS = -Wall -std=c++20 -lblas
+	OBJ_DIR = obj/
+	BIN_DIR = bin/
+endif
+
 
 EXEC_CPP = $(wildcard $(SRC_DIR)*.cpp)
 EXEC_OBJ = $(EXEC_CPP:$(SRC_DIR)%.cpp=$(OBJ_DIR)%.o)
@@ -18,8 +30,10 @@ COMMON_OBJ = $(COMMON_CPP:$(SRC_DIR)%.cpp=$(OBJ_DIR)%.o)
 
 DEPS = $(wildcard $(SRC_DIR)detail/*.hpp)
 
-
 all: $(EXEC_BIN)
+release: $(EXEC_BIN)
+debug: $(EXEC_BIN)
+
 
 
 $(OBJ_DIR)%.o: $(SRC_DIR)%.cpp $(DEPS)

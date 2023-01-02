@@ -5,3 +5,5 @@ OpenBLAS
 old
 perf.data*
 datasets
+bin_debug
+obj_debug

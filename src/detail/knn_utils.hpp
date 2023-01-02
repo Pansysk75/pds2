@@ -1,6 +1,8 @@
 #include "knn_structs.hpp"
 #include <tuple>
 
+size_t idx(size_t i, size_t j, size_t ld);
+
 // they need to be distances of
 // SAME query points
 // DIFFERENT corpus points

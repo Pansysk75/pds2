@@ -5,7 +5,11 @@
 #include <numeric>
 #include <tuple>
 
-#include "global_includes.hpp"
+
+size_t idx(size_t i, size_t j, size_t ld){
+    return ((i)*(ld))+(j);
+}
+
 
 // they need to be distances of
 // SAME query points

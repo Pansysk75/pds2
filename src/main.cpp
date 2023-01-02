@@ -6,8 +6,8 @@
 #include <string>
 #include <random>
 
-#include "detail/global_includes.hpp"
 #include "detail/knn_structs.hpp"
+#include "detail/knn_utils.hpp"
 #include "detail/testingknn.hpp"
 #include "detail/fileio.hpp"
 
@@ -60,8 +60,6 @@ int main(int argc, char **argv)
         size_t d = std::stoi(argv[3]);
         size_t m = std::stoi(argv[4]);
 
-        debug = std::stoi(argv[5]) == 1;
-
         const auto [query, corpus, k] = regual_grid(s, d, m);
         const ResultPacket result = runDistrData(query, corpus, k, 12, 12);
 
@@ -74,7 +72,6 @@ int main(int argc, char **argv)
         size_t d = std::stoi(argv[4]);
         size_t k = std::stoi(argv[5]);
 
-        debug = std::stoi(argv[6]) == 1;
 
         const auto [query, corpus] = random_grid(m, n, d, k);
         const ResultPacket result = runDistrData(query, corpus, k, 12, 12);
@@ -92,7 +89,6 @@ int main(int argc, char **argv)
         size_t d_upper_limit = std::stoi(argv[6]);
         size_t k = std::stoi(argv[7]);
 
-        debug = std::stoi(argv[8]) == 1;
 
         const auto [query, corpus] = file_packets(query_path, 0, m_upper_limit, 
                                                   corpus_path, 0, n_upper_limit, d_upper_limit);
