@@ -5,7 +5,6 @@
 #include "knn_utils.hpp"
 #include "knn_algorithms.hpp"
 #include "fileio.hpp"
-#include "testingknn.hpp"
 
 #define MASTER_RANK 0
 

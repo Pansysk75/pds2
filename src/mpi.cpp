@@ -2,11 +2,11 @@
 #include <string>
 #include <vector>
 
-#include "detail/mpi_process.hpp"
 #include "detail/communication.hpp"
 #include "detail/knn_structs.hpp"
-#include "detail/worker.hpp"
+#include "detail/mpi_process.hpp"
 #include "detail/utilities.hpp"
+#include "detail/worker.hpp"
 
 #define MASTER_RANK 0
 
@@ -15,17 +15,21 @@ size_t n_total; // # total points
 size_t d;       // # dimensions
 size_t k;       // # nearest neighbours
 
-void print_results(const QueryPacket &query, const CorpusPacket &corpus, const ResultPacket &result, size_t k)
+void print_results(const QueryPacket &query, const CorpusPacket &corpus,
+                   const ResultPacket &result, size_t k)
 {
     // Print the results
     for (size_t i = 0; i < std::min(result.m_packet, 10ul); i++)
     {
-        std::cout << "The calculated " << k << " nearest neighbours of number: " << query.X[idx(i, 0, query.d)] << std::endl;
+        std::cout << "The calculated " << k << " nearest neighbours of number: "
+                  << query.X[idx(i, 0, query.d)] << std::endl;
         std::cout << "Are actually the numbers:" << std::endl;
 
         for (size_t j = 0; j < std::min(result.k, (size_t)5ul); j++)
         {
-            std::cout << corpus.Y[idx(result.nidx[idx(i, j, result.k)], 0, corpus.d)] << " with an MSE of: " << result.ndist[idx(i, j, result.k)] << std::endl;
+            std::cout << corpus.Y[idx(result.nidx[idx(i, j, result.k)], 0, corpus.d)]
+                      << " with an MSE of: " << result.ndist[idx(i, j, result.k)]
+                      << std::endl;
         }
         std::cout << std::endl;
     }
@@ -41,10 +45,12 @@ ResultPacket master_main(mpi_process &process)
     // Send initial data to all workers
     for (size_t i = 0; i < (size_t)process.world_size; i++)
     {
-        size_t idx_start = (i * n_total) / process.world_size; // will this overflow?
+        size_t idx_start =
+            (i * n_total) / process.world_size; // will this overflow?
         size_t idx_end = ((i + 1) * n_total) / process.world_size;
 
-        init_data.push_back(initial_work_data(filename, idx_start, idx_end, max_size, d, k));
+        init_data.push_back(
+            initial_work_data(filename, idx_start, idx_end, max_size, d, k));
 
         std::cout << filename << " " << idx_start << " " << idx_end << std::endl;
 
@@ -75,8 +81,6 @@ ResultPacket master_main(mpi_process &process)
     }
 
     return combineCompleteQueries(diffProcRes);
-    
-    
 }
 
 void slave_main(mpi_process &process)
@@ -107,31 +111,30 @@ int main(int argc, char **argv)
     {
         if (process.world_rank == MASTER_RANK)
         {
-            std::cout << "Usage: " << argv[0] << " <filename> <n> <d> <k>" << std::endl;
+            std::cout << "Usage: " << argv[0] << " <filename> <n> <d> <k>"
+                      << std::endl;
         }
         return 1;
     }
     if (process.world_rank == MASTER_RANK)
     {
-
         utilities::timer my_timer;
         my_timer.start();
-        ResultPacket final_result= master_main(process);
+        ResultPacket final_result = master_main(process);
         my_timer.stop();
 
         std::cout << "FINAL RESULTS\n";
         std::cout << final_result << std::endl;
 
-
         auto [query, corpus] = file_packets(filename, 0, n_total, d);
         std::cout << "Loaded query and corpus to print" << std::endl;
         print_results(query, corpus, final_result, k);
 
-        std::cout << "Total time: " << my_timer.get() / 1000000.0 << " ms" << std::endl;
+        std::cout << "Total time: " << my_timer.get() / 1000000.0 << " ms"
+                  << std::endl;
     }
     else
     {
-
         slave_main(process);
     }
 

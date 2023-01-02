@@ -8,7 +8,6 @@
 
 #include "detail/knn_structs.hpp"
 #include "detail/knn_utils.hpp"
-#include "detail/testingknn.hpp"
 #include "detail/fileio.hpp"
 
 void print_results(const QueryPacket &query, const CorpusPacket &corpus, const ResultPacket &result, size_t k)

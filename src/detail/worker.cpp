@@ -3,7 +3,6 @@
 #include "knn_utils.hpp"
 #include "knn_algorithms.hpp"
 #include "fileio.hpp"
-#include "testingknn.hpp"
 #include "worker.hpp"
 
 initial_work_data::initial_work_data(std::string filename, size_t idx_start, size_t idx_end, size_t max_size, size_t d, size_t k)

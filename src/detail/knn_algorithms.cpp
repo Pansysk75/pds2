@@ -1,5 +1,6 @@
 #include "knn_structs.hpp"
 #include "knn_utils.hpp"
+
 #include <cblas.h>
 #include <numeric>
 #include <algorithm>

@@ -1,5 +1,6 @@
 #include "knn_utils.hpp"
 #include "knn_structs.hpp"
+#include "fileio.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -168,3 +169,103 @@ ResultPacket combineCompleteQueries(
 
     return result;
 }
+
+// RowMajor 3d grid up to SxSxS
+// m is query points
+std::tuple<QueryPacket, CorpusPacket, size_t> regual_grid(size_t s, size_t d,
+                                                          size_t m)
+{
+    // Corpus points
+    size_t n = 1;
+    for (size_t _ = 0; _ < d; _++)
+    {
+        n *= s;
+    }
+
+    std::vector<double> Y(n * d);
+
+    for (size_t id = 0; id < n; id++)
+    {
+        size_t i = id;
+        for (size_t comp = 0; comp < d; comp++)
+        {
+            Y[idx(id, comp, d)] = i % s;
+            i /= s;
+        }
+    }
+
+    // Query points, m is given
+    std::vector<double> X(m * d);
+
+    // random points in the grid
+    for (size_t i = 0; i < m; i++)
+    {
+        const size_t y_choice = rand() % n;
+        for (size_t comp = 0; comp < d; comp++)
+            X[idx(i, comp, d)] = Y[idx(y_choice, comp, d)];
+    }
+
+    // 3**d is the imediate neighbors
+    size_t k = 1;
+    for (size_t i = 0; i < d; i++)
+    {
+        k *= 3;
+    }
+
+    return std::make_tuple(QueryPacket(m, d, 0, m, std::move(X)),
+                           CorpusPacket(n, d, 0, n, std::move(Y)), k);
+}
+
+std::tuple<QueryPacket, CorpusPacket> random_grid(size_t m, size_t n, size_t d,
+                                                  size_t k)
+{
+    size_t s = 1000;
+
+    std::vector<double> Y(n * d);
+
+    for (size_t id = 0; id < n; id++)
+    {
+        for (size_t comp = 0; comp < d; comp++)
+        {
+            Y[idx(id, comp, d)] = rand() % s;
+        }
+    }
+
+    // Query points, m is given
+    std::vector<double> X(m * d);
+
+    // random points in the grid
+    for (size_t i = 0; i < m; i++)
+    {
+        const size_t y_choice = rand() % n;
+        for (size_t comp = 0; comp < d; comp++)
+            X[idx(i, comp, d)] = Y[idx(y_choice, comp, d)];
+    }
+
+    return std::make_tuple(QueryPacket(m, d, 0, m, std::move(X)),
+                           CorpusPacket(n, d, 0, n, std::move(Y)));
+}
+
+std::tuple<QueryPacket, CorpusPacket>
+file_packets(const std::string &query_path, const size_t query_start_idx,  const size_t query_end_idx,
+             const std::string &corpus_path, const size_t corpus_start_idx,  const size_t corpus_end_idx,
+             const size_t d_upper_limit)
+{
+
+    auto [X, m, d] =
+        load_csv<double>(query_path, query_start_idx, query_end_idx, d_upper_limit, false);
+
+    auto [Y, n, d_ignore] =
+        load_csv<double>(corpus_path, corpus_start_idx, corpus_end_idx, d_upper_limit, false);
+
+    return std::make_tuple(QueryPacket(m, d, query_start_idx, query_end_idx, std::move(X)),
+                           CorpusPacket(n, d, corpus_start_idx, corpus_end_idx, std::move(Y)));
+}
+
+// Use when query and corpus are the same
+std::tuple<QueryPacket, CorpusPacket>
+file_packets(const std::string &file_path, const size_t start_idx,  const size_t end_idx,
+             const size_t d_upper_limit){
+                return file_packets(file_path, start_idx, end_idx, file_path, start_idx, end_idx, d_upper_limit); 
+             }
+
