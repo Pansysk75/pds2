@@ -29,13 +29,27 @@ struct CorpusPacket
                  size_t y_end_index, std::vector<double> &&Y)
         : n_packet(n_packet), d(d), y_start_index(y_start_index),
           y_end_index(y_end_index), Y(std::move(Y)) {}
+
+
 };
+
+// make printable
+
+inline std::ostream& operator<<(std::ostream& os, const CorpusPacket& c)
+{
+    os <<  c.y_start_index<< "->" << c.y_end_index << " | n:" << c.n_packet << " d:" << c.d;
+    return os;
+}
+
+// make sendable
 
 template <>
 inline com_request com_port::_impl_send_begin(int destination_id, CorpusPacket &c)
 {
     return send_begin(destination_id, c.d, c.n_packet, c.y_start_index, c.y_end_index, c.Y);
 }
+
+// make receivable
 
 template <>
 inline com_request com_port::_impl_receive_begin(int source_id, CorpusPacket &c)
@@ -71,11 +85,23 @@ struct QueryPacket
           x_end_index(x_end_index), X(std::move(X)) {}
 };
 
+// make printable
+
+inline std::ostream& operator<<(std::ostream& os, const QueryPacket& c)
+{
+    os <<  c.x_start_index<< "->" << c.x_end_index << " | n:" << c.m_packet << " d:" << c.d;
+    return os;
+}
+
+// make sendable
+
 template <>
 inline com_request com_port::_impl_send_begin(int destination_id, QueryPacket &c)
 {
     return send_begin(destination_id, c.d, c.m_packet, c.x_start_index, c.x_end_index, c.X);
 }
+
+// make receivable
 
 template <>
 inline com_request com_port::_impl_receive_begin(int source_id, QueryPacket &c)
@@ -138,11 +164,22 @@ struct ResultPacket
                  size_t k);
 };
 
+// make printable
+inline std::ostream& operator<<(std::ostream& os, const ResultPacket& c)
+{
+    os << "X:" << c.x_start_index<< "->" << c.x_end_index << " | Y:" << c.y_start_index<< "->" << c.y_end_index;
+    return os;
+}
+
+// make sendable
+
 template <>
 inline void com_port::_impl_send(int destination_id, ResultPacket &c)
 {
     send(destination_id, c.k, c.m_packet, c.n_packet, c.ndist, c.nidx, c.x_end_index, c.x_start_index, c.y_end_index, c.y_start_index);
 }
+
+// make receivable
 
 template <>
 inline void com_port::_impl_receive(int destination_id, ResultPacket &c)

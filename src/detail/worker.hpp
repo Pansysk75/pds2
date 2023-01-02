@@ -79,7 +79,8 @@ public:
 
     void initialize();
 
-    void deb(std::string str);
-    void deb_v();
+    void print_debug();
+    void print_debug(std::string str);
+
     void work();
 };

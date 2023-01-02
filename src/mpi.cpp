@@ -47,7 +47,6 @@ void master_main(mpi_process &process)
     diffProcRes.push_back(w.results);
     for (int i = 1; i < process.world_size; i++)
     {
-        std::cout << process.world_rank << "GotResult" << std::endl;
         size_t query_size = (init_data[i].idx_end - init_data[i].idx_start);
         ResultPacket result(query_size * k);
         com.receive(i, result);
@@ -57,7 +56,7 @@ void master_main(mpi_process &process)
     std::cout << "RESULTS\n";
     for (auto &elem : diffProcRes)
     {
-        std::cout << elem.x_start_index << " " << elem.x_end_index << " | " << elem.y_start_index << " " << elem.y_end_index << " | " << elem.m_packet << " " << elem.n_packet << " | " << elem.k << std::endl;
+        std::cout << elem << std::endl;
     }
 
     ResultPacket final_result = combineCompleteQueries(diffProcRes);
