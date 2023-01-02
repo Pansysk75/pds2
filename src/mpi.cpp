@@ -96,7 +96,8 @@ void master_main(mpi_process &process)
     std::cout << "FINAL RESULTS\n";
     std::cout << final_result << std::endl;
 
-    auto [query, corpus] = file_packets(filename, n_total, d, k);
+    auto [query, corpus] = file_packets(filename, 0, n_total, d);
+    std::cout << "Loaded query and corpus to print" << std::endl;
     print_results(query, corpus, final_result, k);
 }
 
