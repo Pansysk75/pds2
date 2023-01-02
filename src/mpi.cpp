@@ -18,25 +18,14 @@ size_t k;       // # nearest neighbours
 void print_results(const QueryPacket &query, const CorpusPacket &corpus, const ResultPacket &result, size_t k)
 {
     // Print the results
-    for (size_t i = 0; i < std::min(result.m_packet, (size_t)1); i++)
+    for (size_t i = 0; i < std::min(result.m_packet, 10ul); i++)
     {
-        std::cout << "Nearest neighbors of point ";
-        for (size_t j = 0; j < query.d; j++)
-        {
-            // std::cout << query.X[idx(i, j, query.d)] << " ";
-        }
-        std::cout << "are:" << std::endl;
+        std::cout << "The calculated " << k << " nearest neighbours of number: " << query.X[idx(i, 0, query.d)] << std::endl;
+        std::cout << "Are actually the numbers:" << std::endl;
 
-        for (size_t j = 0; j < std::min(result.k, (size_t)1); j++)
+        for (size_t j = 0; j < std::min(result.k, (size_t)10ul); j++)
         {
-            double diff = 0;
-            for (size_t comp = 0; comp < query.d; comp++)
-            {
-                diff += std::abs(query.X[idx(i, comp, query.d)] - corpus.Y[idx(result.nidx[idx(i, j, result.k)], comp, corpus.d)]);
-                // std::cout << corpus.Y[idx(result.nidx[idx(i, j, result.k)],comp , corpus.d)] << " ";
-            }
-            std::cout << std::endl;
-            std::cout << "diff: " << diff << std::endl;
+            std::cout << corpus.Y[idx(result.nidx[idx(i, j, result.k)], 0, corpus.d)] << " with a MSE of: " << result.ndist[idx(i, j, result.k)] << std::endl;
         }
         std::cout << std::endl;
     }
