@@ -12,8 +12,8 @@ ifeq ($(DEBUG), 1)
 	BIN_DIR = bin_debug/
 
 else
-    CFLAGS = -Wall -std=c++20 -lblas
-	LFLAGS = -Wall -std=c++20 -lblas
+    CFLAGS = -Wall -std=c++20 -O3 -lblas
+	LFLAGS = -Wall -std=c++20 -O3 -lblas
 	OBJ_DIR = obj/
 	BIN_DIR = bin/
 endif

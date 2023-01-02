@@ -118,16 +118,19 @@ void test_com(mpi_process &proc)
     std::cout << recv_data2 << std::endl;
 }
 
-int main() 
+int main(int argc, char **argv) 
 {
 
     mpi_process proc;
 
-    test_com(proc);
+    //test_com(proc);
 
     if (proc.world_rank == 0)
     {
-        test_knn(10, 2, 2, 0, 10);
+        size_t size = std::stoi(argv[1]); 
+        size_t dim = std::stoi(argv[2]);
+        size_t k = std::stoi(argv[3]);
+        test_knn(size, dim, k, 0, size);
     }
     return 0;
 }
