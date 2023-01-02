@@ -23,16 +23,16 @@ void print_results(const QueryPacket &query, const CorpusPacket &corpus, const R
         std::cout << "The calculated " << k << " nearest neighbours of number: " << query.X[idx(i, 0, query.d)] << std::endl;
         std::cout << "Are actually the numbers:" << std::endl;
 
-        for (size_t j = 0; j < std::min(result.k, (size_t)10ul); j++)
+        for (size_t j = 0; j < std::min(result.k, (size_t)5ul); j++)
         {
-            std::cout << corpus.Y[idx(result.nidx[idx(i, j, result.k)], 0, corpus.d)] << " with a MSE of: " << result.ndist[idx(i, j, result.k)] << std::endl;
+            std::cout << corpus.Y[idx(result.nidx[idx(i, j, result.k)], 0, corpus.d)] << " with an MSE of: " << result.ndist[idx(i, j, result.k)] << std::endl;
         }
         std::cout << std::endl;
     }
 }
 
 // Entry point for MPI master
-void master_main(mpi_process &process)
+ResultPacket master_main(mpi_process &process)
 {
     com_port com(process.world_rank, process.world_size);
 
@@ -74,20 +74,9 @@ void master_main(mpi_process &process)
         std::cout << elem << std::endl;
     }
 
-    ResultPacket final_result = combineCompleteQueries(diffProcRes);
+    return combineCompleteQueries(diffProcRes);
     
-    // free the memory
-    for(auto& elem: diffProcRes) {
-        elem.ndist = std::vector<double>();
-        elem.nidx = std::vector<size_t>();
-    }
-
-    std::cout << "FINAL RESULTS\n";
-    std::cout << final_result << std::endl;
-
-    auto [query, corpus] = file_packets(filename, 0, n_total, d);
-    std::cout << "Loaded query and corpus to print" << std::endl;
-    print_results(query, corpus, final_result, k);
+    
 }
 
 void slave_main(mpi_process &process)
@@ -127,8 +116,17 @@ int main(int argc, char **argv)
 
         utilities::timer my_timer;
         my_timer.start();
-        master_main(process);
+        ResultPacket final_result= master_main(process);
         my_timer.stop();
+
+        std::cout << "FINAL RESULTS\n";
+        std::cout << final_result << std::endl;
+
+
+        auto [query, corpus] = file_packets(filename, 0, n_total, d);
+        std::cout << "Loaded query and corpus to print" << std::endl;
+        print_results(query, corpus, final_result, k);
+
         std::cout << "Total time: " << my_timer.get() / 1000000.0 << " ms" << std::endl;
     }
     else
