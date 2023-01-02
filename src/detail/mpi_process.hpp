@@ -8,8 +8,8 @@ struct mpi_process{
     int world_size;
     int world_rank;
 
-    mpi_process(){
-        MPI_Init(NULL, NULL);
+    mpi_process(int* p_argc, char*** p_argv){
+        MPI_Init(p_argc, p_argv);
         MPI_Comm_size(MPI_COMM_WORLD, &world_size);
         MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
     }

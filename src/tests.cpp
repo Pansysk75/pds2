@@ -121,12 +121,18 @@ void test_com(mpi_process &proc)
 int main(int argc, char **argv) 
 {
 
-    mpi_process proc;
+    mpi_process proc(&argc, &argv);
 
     //test_com(proc);
 
     if (proc.world_rank == 0)
     {
+        if(argc != 4)
+        {
+            std::cout << "Usage: ./tests <size> <dim> <k>" << std::endl;
+            return 1;
+        }
+
         size_t size = std::stoi(argv[1]); 
         size_t dim = std::stoi(argv[2]);
         size_t k = std::stoi(argv[3]);
