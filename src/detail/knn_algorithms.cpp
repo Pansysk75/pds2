@@ -1,6 +1,5 @@
 #include "knn_structs.hpp"
 #include "knn_utils.hpp"
-#include "bounded_max_heap.hpp"
 #include <cblas.h>
 #include <numeric>
 #include <algorithm>
@@ -209,8 +208,10 @@ ResultPacket knn_dynamic(const QueryPacket &query, const CorpusPacket &corpus, s
     size_t k = res.k;
     size_t d = query.d;
 
-    // Max heap is used to store idx-distance of only k nearest points
-    bounded_max_heap<index_distance_pair> heap(k);
+    // A bounded max heap is used to store idx-distance of only k nearest points
+    size_t max_heap_size = k;
+    std::vector<index_distance_pair> heap;
+    heap.reserve(k);
     for (unsigned int x = 0; x < query.m_packet; x++)
     {
         heap.clear();
@@ -228,8 +229,16 @@ ResultPacket knn_dynamic(const QueryPacket &query, const CorpusPacket &corpus, s
                     distance = std::numeric_limits<double>::max();
                 }
 #endif
-
-            heap.insert({distance, y + res.y_start_index});
+            size_t global_y_idx = y+res.y_start_index;
+            if (heap.size() < max_heap_size){
+                heap.emplace_back(distance, global_y_idx);
+                std::make_heap(heap.begin(), heap.end());
+            }
+            else if(distance < heap[0].distance)
+            {
+                heap[0] = index_distance_pair{distance, global_y_idx};
+                std::make_heap(heap.begin(), heap.end());
+            }
         }    
 
         res.nidx.resize(query.m_packet * k);
@@ -237,8 +246,8 @@ ResultPacket knn_dynamic(const QueryPacket &query, const CorpusPacket &corpus, s
         // write result from heap to vectors
         for (unsigned int i = 0; i < k; i++)
         {
-            res.nidx[idx(x, i, k)] = heap.data[i].index;
-            res.ndist[idx(x, i, k)] = heap.data[i].distance;
+            res.nidx[idx(x, i, k)] = heap[i].index;
+            res.ndist[idx(x, i, k)] = heap[i].distance;
         }
     }
     return res;

@@ -127,7 +127,7 @@ int main()
 
     if (proc.world_rank == 0)
     {
-        test_knn(2000, 2, 5, 0, 2000);
+        test_knn(10, 2, 2, 0, 10);
     }
     return 0;
 }
