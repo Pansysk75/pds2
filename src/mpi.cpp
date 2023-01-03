@@ -10,10 +10,6 @@
 
 #define MASTER_RANK 0
 
-std::string filename;
-size_t n_total; // # total points
-size_t d;       // # dimensions
-size_t k;       // # nearest neighbours
 
 void print_results(const QueryPacket &query, const CorpusPacket &corpus,
                    const ResultPacket &result, size_t k)
@@ -36,23 +32,24 @@ void print_results(const QueryPacket &query, const CorpusPacket &corpus,
 }
 
 // Entry point for MPI master
-ResultPacket master_main(mpi_process &process)
+ResultPacket master_main(mpi_process &process, std::string filename, size_t n_total, size_t d, size_t k)
 {
     com_port com(process.world_rank, process.world_size);
 
-    std::vector<initial_work_data> init_data;
-    size_t max_size = 1 + n_total / process.world_size;
     // Send initial data to all workers
+
+    std::vector<initial_work_data> init_data;
+    size_t max_size = 1 + n_total / process.world_size; //all workers will alocate memory this size of memory 
+
     for (size_t i = 0; i < (size_t)process.world_size; i++)
     {
-        size_t idx_start =
-            (i * n_total) / process.world_size; // will this overflow?
+        size_t idx_start = (i * n_total) / process.world_size; // will this overflow?
         size_t idx_end = ((i + 1) * n_total) / process.world_size;
 
         init_data.push_back(
             initial_work_data(filename, idx_start, idx_end, max_size, d, k));
 
-        std::cout << filename << " " << idx_start << " " << idx_end << std::endl;
+        std::cout << "Worker " << i << ": " << filename << " n=" << idx_start << "->" << idx_end << std::endl;
 
         // send to everyone except this
         if (i != MASTER_RANK)
@@ -62,6 +59,10 @@ ResultPacket master_main(mpi_process &process)
     worker w(process.world_rank, process.world_size, init_data[0]);
 
     w.work();
+
+    // Now every process is working and exchanging data!
+    // Time passes ...
+    // ....
 
     // Gather result
     std::vector<ResultPacket> diffProcRes;
@@ -74,6 +75,8 @@ ResultPacket master_main(mpi_process &process)
         diffProcRes.push_back(result);
     }
 
+
+    // Print results 
     std::cout << "RESULTS\n";
     for (auto &elem : diffProcRes)
     {
@@ -93,34 +96,36 @@ void slave_main(mpi_process &process)
 int main(int argc, char **argv)
 {
 
-    if (argc == 5)
+    mpi_process process(&argc, &argv);
+
+    // Handle command line arguments
+    if (argc != 5)
     {
-        filename = argv[1];
-        n_total = std::stoi(argv[2]);
-        d = std::stoi(argv[3]);
-        k = std::stoi(argv[4]);
+        if (process.is_master()){
+            std::cout << "Usage: " << argv[0] << " <filename> <n> <d> <k>"
+                        << std::endl;
+        }
+        return 1;
+    }
+
+    
+    if (process.is_master())
+    {
+
+        std::string filename = argv[1];
+        size_t n_total = std::stoi(argv[2]);
+        size_t d = std::stoi(argv[3]);
+        size_t k = std::stoi(argv[4]);
 
         std::cout << "filename: " << filename << std::endl;
         std::cout << "n_total: " << n_total << std::endl;
         std::cout << "d: " << d << std::endl;
         std::cout << "k: " << k << std::endl;
-    }
 
-    mpi_process process(&argc, &argv);
-    if (argc != 5)
-    {
-        if (process.world_rank == MASTER_RANK)
-        {
-            std::cout << "Usage: " << argv[0] << " <filename> <n> <d> <k>"
-                      << std::endl;
-        }
-        return 1;
-    }
-    if (process.world_rank == MASTER_RANK)
-    {
+
         utilities::timer my_timer;
         my_timer.start();
-        ResultPacket final_result = master_main(process);
+        ResultPacket final_result = master_main(process, filename, n_total, d, k);
         my_timer.stop();
 
         std::cout << "FINAL RESULTS\n";

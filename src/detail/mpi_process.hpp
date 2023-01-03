@@ -19,6 +19,10 @@ struct mpi_process{
         MPI_Finalize();
     }
 
+    bool is_master(){
+        return world_rank == 0;
+    }
+
     // Overload the "=" operator and the copy-constructor to prevent accidental 
     // copying. This object should be only created once and then just referenced.
     mpi_process& operator= (const mpi_process&) = delete;

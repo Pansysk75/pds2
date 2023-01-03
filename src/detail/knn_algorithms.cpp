@@ -5,7 +5,7 @@
 #include <numeric>
 #include <algorithm>
 
-#define SAME_FILE
+// #define SELF_NOT_IN_KNN
 
 ResultPacket knn_simple(const QueryPacket &query, const CorpusPacket &corpus,
                         size_t k_arg)
@@ -46,7 +46,7 @@ ResultPacket knn_simple(const QueryPacket &query, const CorpusPacket &corpus,
                             (query.X[d * x + i] - corpus.Y[d * y + i]);
             }
 
-#ifdef SAME_FILE
+#ifdef SELF_NOT_IN_KNN
             if(query.x_start_index + x == corpus.y_start_index + y){
                 distance = std::numeric_limits<double>::max();
             }     
@@ -119,7 +119,7 @@ ResultPacket knn_blas(const QueryPacket &query,
                 corpus.n_packet, corpus.d, -2.0, query.X.data(), query.d,
                 corpus.Y.data(), corpus.d, 1.0, D.data(), corpus.n_packet);
 
-#ifdef SAME_FILE
+#ifdef SELF_NOT_IN_KNN
     // they are overlapping
         if(corpus.y_start_index < query.x_end_index&& query.x_start_index < corpus.y_end_index) {
             for(size_t i = 0; i < query.m_packet; i++) {
@@ -225,7 +225,7 @@ ResultPacket knn_dynamic(const QueryPacket &query, const CorpusPacket &corpus, s
                             (query.X[d * x + i] - corpus.Y[d * y + i]);
             }
             
-#ifdef SAME_FILE
+#ifdef SELF_NOT_IN_KNN
                 if(query.x_start_index + x == corpus.y_start_index + y){
                     distance = std::numeric_limits<double>::max();
                 }
