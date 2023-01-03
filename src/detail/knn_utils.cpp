@@ -21,7 +21,7 @@ size_t idx(size_t i, size_t j, size_t ld)
 std::tuple<bool, size_t, size_t> combinableSameX(const ResultPacket &back,
                                                  const ResultPacket &front)
 {
-    const bool combinable = (back.k == front.k && back.m_packet == front.m_packet && back.x_start_index == front.x_start_index && back.x_end_index == front.x_end_index);
+    const bool combinable = ( back.m_packet == front.m_packet && back.x_start_index == front.x_start_index && back.x_end_index == front.x_end_index);
 
     if (combinable)
     {
@@ -62,7 +62,7 @@ ResultPacket combineKnnResultsSameX(const ResultPacket &back,
     const auto [combinable, res_y_start_index, res_y_end_index] = combinableSameX(back, front);
     if (!combinable)
     {
-        throw std::runtime_error("Cannot combine knn results");
+        throw std::runtime_error("Cannot combine knn X results");
     }
 
     ResultPacket result(back.m_packet, back.n_packet + front.n_packet,
