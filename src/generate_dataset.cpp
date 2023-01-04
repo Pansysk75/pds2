@@ -9,20 +9,27 @@ int main(int argc, char **argv)
 {
     if (argc < 2)
     {
-        std::cout << "Usage:\t" << argv[0] << " -f=[filename] -g=random -n=[number of lines] -d=[number of dimensions]" << std::endl;
-        std::cout << "or \t" << argv[0] << " -f=[filename] -g=regular -s=[side length] -d=[number of dimensions]" << std::endl;
+        std::cout << "Usage:\t" << argv[0] << " -f=[filename] -g=random -n=[number of lines] -d=[number of dimensions] [optional: -p to pad with a line on top and a label=0]" << std::endl;
+        std::cout << "or:\t" << argv[0] << " -f=[filename] -g=regular -s=[side length] -d=[number of dimensions] [optional: -p to pad with a line on top and a label=0]" << std::endl;
         return 1;
     }
 
     size_t n=0, s=0, d=0;
     enum { RANDOM, REGULAR } mode;
     std::string filename;
+    bool pad = false;
 
     int opt, opt_got = 0;
-    while((opt = getopt(argc, argv, "f:g:n:s:d:")) != -1)
+    while((opt = getopt(argc, argv, "f:g:n:s:d:p")) != -1)
     {
-            optarg = optarg+1;
+        // skip first char if it is =
+        if(optarg) {
+            if(optarg[0] == '=') optarg++;
             std::cout << "Mode given: " << (char)opt << " = " << optarg << std::endl;
+        } else {
+            std::cout << "Mode given: " << (char)opt << std::endl;
+        }
+
         switch(opt)
         {
             case 'f':
@@ -52,6 +59,9 @@ int main(int argc, char **argv)
             case 'd':
                 d = std::stoi(optarg);
                 break;
+            case 'p':
+                pad = true;
+                break;
             default:
                 std::cout << "Invalid option" << std::endl;
                 return 1;
@@ -67,7 +77,7 @@ int main(int argc, char **argv)
     if(mode == RANDOM)
     {
         auto [__, corpus] = random_grid(0, n, d);
-        vectorToCSV(filename, corpus.Y, n, d);
+        vectorToCSV(filename, corpus.Y, n, d, pad);
 
         std::cout << "Generated random dataset" << std::endl;
     }
@@ -77,7 +87,7 @@ int main(int argc, char **argv)
         size_t lines = 1;
         for (size_t i = 0; i < d; i++)
             lines *= s;
-        vectorToCSV(filename, corpus.Y, lines, d);
+        vectorToCSV(filename, corpus.Y, lines, d, pad);
 
         std::cout << "Generated regular dataset" << std::endl;
     }

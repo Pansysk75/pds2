@@ -157,9 +157,21 @@ template std::tuple<std::vector<double>, size_t, size_t, std::vector<std::string
 load_csv_with_labels<double>(const std::string &filename, const size_t line_begin,
                      const size_t line_end, const size_t el_upper_limit);
 
-void vectorToCSV(std::string filename, const std::vector<double>& vec, const size_t lines, const size_t dim) {
+void vectorToCSV(std::string filename, const std::vector<double>& vec, const size_t lines, const size_t dim, bool pad) {
     std::ofstream file(filename);
+    if (pad) {
+        for (size_t j = 0; j < dim+1; j++) {
+            file << 0;
+            if (j < dim) {
+                file << ",";
+            }
+        }
+        file << "\n";
+    }
     for (size_t i = 0; i < lines; i++) {
+        if (pad) {
+            file << "0,";
+        }
         for (size_t j = 0; j < dim; j++) {
             file << vec[i*dim + j];
             if (j < dim - 1) {

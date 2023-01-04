@@ -10,7 +10,7 @@
 
 #define MASTER_RANK 0
 
-void print_results(const std::string& q_filename, const std::string& c_filename, const ResultPacket& result, size_t d)
+void print_results_with_labels(const std::string& q_filename, const std::string& c_filename, const ResultPacket& result, size_t d)
 {
     auto [query, query_labels, corpus, corpus_labels] = file_packets_with_label(q_filename, 0, result.m_packet, c_filename, 0, result.n_packet, d);
 
@@ -24,6 +24,32 @@ void print_results(const std::string& q_filename, const std::string& c_filename,
         for (size_t j = 0; j < std::min(result.k, (size_t)5ul); j++)
         {
             std::cout << corpus_labels[result.nidx[idx(i, j, result.k)]]
+                      << " with an MSE of: " << result.ndist[idx(i, j, result.k)]
+                      << std::endl;
+        }
+        std::cout << std::endl;
+    }
+}
+
+void print_results_with_labels(const std::string& filename, const ResultPacket &result, size_t k)
+{
+    print_results_with_labels(filename, filename, result, k);
+}
+
+void print_results(const std::string& q_filename, const std::string& c_filename, const ResultPacket& result, size_t d)
+{
+    auto [query, corpus] = file_packets(q_filename, 0, result.m_packet, c_filename, 0, result.n_packet, d);
+
+    // Print the results
+    for (size_t i = 0; i < std::min(result.m_packet, 10ul); i++)
+    {
+        std::cout << "The calculated " << std::min(result.k, (size_t)5ul) << " nearest neighbours of point in line: "
+                  << i << std::endl;
+        std::cout << "Are the points in lines:" << std::endl;
+
+        for (size_t j = 0; j < std::min(result.k, (size_t)5ul); j++)
+        {
+            std::cout << corpus.Y[result.nidx[idx(i, j, result.k)]]
                       << " with an MSE of: " << result.ndist[idx(i, j, result.k)]
                       << std::endl;
         }
@@ -99,8 +125,7 @@ int main(int argc, char **argv)
     if (argc != 5)
     {
         if (process.is_master()){
-            std::cout << "Usage: " << argv[0] << " <filename> <n> <d> <k>"
-                        << std::endl;
+            std::cout << "Usage: " << argv[0] << " <filename> <n> <d> <k> [optional: -l for file with labels]" << std::endl;
         }
         return 1;
     }
@@ -108,8 +133,6 @@ int main(int argc, char **argv)
     
     if (process.is_master())
     {
-
-
         std::string filename = argv[1];
         size_t n_total = std::stoi(argv[2]);
         size_t d = std::stoi(argv[3]);
@@ -129,7 +152,11 @@ int main(int argc, char **argv)
         std::cout << final_result << std::endl;
 
         std::cout << "Loaded query and corpus to print" << std::endl;
-        print_results(filename, final_result, d);
+        if(argc > 5 && std::stoi(argv[5]) == 1){
+            print_results_with_labels(filename, final_result, k);
+        }else{
+            print_results(filename, final_result, d);
+        }
 
         std::cout << "Total time: " << my_timer.get() / 1000000.0 << " ms"
                   << std::endl;
