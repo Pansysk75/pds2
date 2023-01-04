@@ -152,7 +152,7 @@ int main(int argc, char **argv)
         std::cout << final_result << std::endl;
 
         std::cout << "Loaded query and corpus to print" << std::endl;
-        if(argc > 5 && std::stoi(argv[5]) == 1){
+        if(argc > 5 && std::string(argv[5]) == "-l"){
             print_results_with_labels(filename, final_result, k);
         }else{
             print_results(filename, final_result, d);
