@@ -4,6 +4,6 @@ bin
 OpenBLAS
 old
 perf.data*
-datasets
 bin_debug
 obj_debug
+local_results

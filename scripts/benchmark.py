@@ -4,57 +4,77 @@ import argparse
 import re
 import csv
 import numpy as np
-import math
 
+### Parse arguments
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--distributed", help="Use this to launch slurm jobs", action="store_true")
+args = vars(parser.parse_args())
+
+
+### Constant run parameters
 
 results_file_name = "results.csv"
 
-base_command = "mpirun -np 4 bin/mpi"
+base_command = "mpirun -np {} bin/mpi {} {} {} {}"
+if(args["distributed"]):
+    base_command = "srun --nodes {} bin/mpi {} {} {} {}"
+
 dataset = "datasets/mnist_test.csv"
 
-n_list = list(range(100, 1000, 100))
 
-# Or, uncomment for log-spaced numbers! :
+### Below we set the variables that run parametrically
+### Here are some examples:
 
-# n_start, n_end, n_num_points = (100, 10000)
-# n_list = [int(n) for n in np.logspace(
-#         math.log10(n_start), math.log10(n_end), int(n_num_points))]
+### This is for manually specifying values:
+# n_list = [100, 200, 400, 525, 1000]
 
-d_list = [100]
-k_list = [100]
+### This is for linear range
+# n_list = list(range(200, 2000, 200))
+
+### This is for a list of powers of 2 ([2**7, 2**8, ..., 2**14])
+# n_list = [2**i for i in range(7, 14)]
+
+### This is an alternative for log-spaced integers
+# n_start, n_end, n_num_points = (100, 10000, 10)
+# n_list = [int(n) for n in np.logspace(math.log10(n_start), math.log10(n_end), int(n_num_points))]
+
+n_list = [2**i for i in range(7, 14)]
+d_list = [8,16,32, 64, 128]
+k_list = [5]
+mpi_np_list = [4]
+
+### Repeat each measurement many times
+n_iterations = 5 
 
 with open(results_file_name, "w", newline="") as csvfile:
-    # create a CSV writer
+    ### Create a CSV writer
     writer = csv.writer(csvfile)
-    # write the header row
-    header = ["base_command", "dataset", "n", "d", "k", "time"]
+    ### Write the header row
+    header = ["base_command", "dataset", "num_processors", "n", "d", "k", "time"]
     writer.writerow(header)
 
-    # iterate over all combinations of the ranges
-    for combination in itertools.product(n_list, d_list, k_list):
-        n, d, k = combination
+    ### Iterate over all combinations of the ranges
+    for combination in itertools.product(mpi_np_list, n_list, d_list, k_list):
+        mpi_np, n, d, k = combination
         if(n<=k):
             continue
-        # build the argument list for the subprocess call
-        exec_args = []
-        exec_args.extend(base_command.split(" "))
-        # add the static arguments
-        exec_args.extend("{} {} {} {}".format(dataset, n, d, k).split(" "))
+        ### Build the argument list for the subprocess call
+        exec_args = base_command.format(mpi_np, dataset, n, d, k).split(" ")
 
-        # run the executable and capture the output
         print("Running command: " + " ".join(exec_args))
-        result = subprocess.run(exec_args, stdout=subprocess.PIPE)
+        for _ in range(n_iterations):
+            ### Run the executable and capture the output
+            result = subprocess.run(exec_args, stdout=subprocess.PIPE)
 
-    
-        output = result.stdout.decode("utf-8")
-        # extract the captures from the output
-        match = re.search("Total time: (\d+\.?\d*)", output)
-        captured = ""
-        if match:
-            captured = match.group(1)
+        
+            output = result.stdout.decode("utf-8")
+            ### Extract the captures from the output
+            match = re.search("Total time: (\d+\.?\d*)", output)
+            captured = ""
+            if match:
+                captured = match.group(1)
 
-        # write the results to the CSV file
-        row = [base_command, dataset]
-        row.extend(combination)
-        row.append(captured)
-        writer.writerow(row)
+            ### Wprite the results to the CSV file
+            row = [base_command, dataset, *combination, captured]
+            writer.writerow(row)
