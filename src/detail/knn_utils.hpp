@@ -3,7 +3,6 @@
 #include <tuple>
 #include <vector>
 
-
 size_t idx(size_t i, size_t j, size_t ld);
 
 // they need to be distances of
@@ -36,10 +35,36 @@ ResultPacket combineKnnResultsSameY(const ResultPacket &back,
 // whole X
 ResultPacket combineCompleteQueries(std::vector<ResultPacket> &results);
 
-std::tuple<QueryPacket, CorpusPacket, size_t> regual_grid(size_t s, size_t d, size_t m);
+std::tuple<QueryPacket, CorpusPacket, size_t> regular_grid(size_t s, size_t d,
+                                                          size_t m);
 
-std::tuple<QueryPacket, CorpusPacket> random_grid(size_t m, size_t n, size_t d, size_t k);
+std::tuple<QueryPacket, CorpusPacket> random_grid(size_t m, size_t n, size_t d);
 
-std::tuple<QueryPacket, CorpusPacket> file_packets(const std::string &query_path, const size_t query_start_idx,  const size_t query_end_idx,const std::string &corpus_path, const size_t corpus_start_idx,  const size_t corpus_end_idx, const size_t d_upper_limit);
 
-std::tuple<QueryPacket, CorpusPacket> file_packets(const std::string &file_path, const size_t start_idx,  const size_t end_idx, const size_t d_upper_limit);
+std::tuple<QueryPacket, CorpusPacket>
+file_packets(const std::string &query_path, const size_t query_start_idx,
+             const size_t query_end_idx, const std::string &corpus_path,
+             const size_t corpus_start_idx, const size_t corpus_end_idx,
+             const size_t d_upper_limit);
+
+std::tuple<QueryPacket, CorpusPacket> file_packets(const std::string &file_path,
+                                                   const size_t start_idx,
+                                                   const size_t end_idx,
+                                                   const size_t d_upper_limit);
+
+void packetToCsv(const std::string &filename, const QueryPacket &query);
+
+std::tuple<QueryPacket, std::vector<std::string>, CorpusPacket,
+           std::vector<std::string>>
+file_packets_with_label(const std::string &query_path,
+                        const size_t query_start_idx,
+                        const size_t query_end_idx,
+                        const std::string &corpus_path,
+                        const size_t corpus_start_idx,
+                        const size_t corpus_end_idx,
+                        const size_t d_upper_limit);
+
+std::tuple<QueryPacket, std::vector<std::string>, CorpusPacket,
+           std::vector<std::string>>
+file_packets_with_label(const std::string &file_path, const size_t start_idx,
+                        const size_t end_idx, const size_t d_upper_limit);
