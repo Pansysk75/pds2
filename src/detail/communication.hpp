@@ -60,7 +60,9 @@ public:
     void _impl_receive(int source_id, T &t) = delete;
 
     template <typename... P>
+#if __cplusplus >= 202104L
         requires(sizeof...(P) > 0)
+#endif
     void receive(int source_id, P &...p)
     {
         (_impl_receive(source_id, p), ...);
@@ -73,7 +75,9 @@ public:
     com_request _impl_receive_begin(int source_id, T &) = delete;
 
     template <typename... P>
+#if __cplusplus >= 202104L
         requires(sizeof...(P) > 0)
+#endif
     com_request receive_begin(int source_id, P &...p)
     {
         com_request request = (_impl_receive_begin(source_id, p) << ...);
@@ -87,7 +91,9 @@ public:
     void _impl_send(int source_id, T &) = delete;
 
     template <typename... P>
+#if __cplusplus >= 202104L
         requires(sizeof...(P) > 0)
+#endif
     void send(int destination_id, P &...p)
     {
         (_impl_send(destination_id, p), ...);
@@ -100,7 +106,9 @@ public:
     com_request _impl_send_begin(int source_id, T &) = delete;
 
     template <typename... P>
+#if __cplusplus >= 202104L
         requires(sizeof...(P) > 0)
+#endif
     com_request send_begin(int destination_id, P &...p)
     {
         com_request request = (_impl_send_begin(destination_id, p) << ...);
@@ -110,8 +118,11 @@ public:
     }
 
     // Waits for a non-blocking communication to complete
+#if __cplusplus >= 202104L
     template <std::convertible_to<com_request>... P>
-        requires(sizeof...(P) > 1)
+#else
+    template <typename... P>
+#endif
     void wait(P &...req)
     {
         (wait(req), ...);

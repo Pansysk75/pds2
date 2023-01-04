@@ -232,7 +232,7 @@ ResultPacket knn_dynamic(const QueryPacket &query, const CorpusPacket &corpus, s
 #endif
             size_t global_y_idx = y+res.y_start_index;
             if (heap.size() < max_heap_size){
-                heap.emplace_back(distance, global_y_idx);
+                heap.push_back(index_distance_pair{distance, global_y_idx});
                 std::make_heap(heap.begin(), heap.end());
             }
             else if(distance < heap[0].distance)
