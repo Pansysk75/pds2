@@ -7,3 +7,4 @@ perf.data*
 bin_debug
 obj_debug
 local_results
+python_venv

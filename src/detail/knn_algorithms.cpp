@@ -6,7 +6,6 @@
 #include <algorithm>
 
 // #define SELF_NOT_IN_KNN
-
 ResultPacket knn_simple(const QueryPacket &query, const CorpusPacket &corpus,
                         size_t k_arg)
 {
@@ -34,9 +33,10 @@ ResultPacket knn_simple(const QueryPacket &query, const CorpusPacket &corpus,
     results.nidx.resize(query.m_packet * k);
     results.ndist.resize(query.m_packet * k);
 
-    std::vector<index_distance_pair> idx_dist_vec(corpus.n_packet);
+    #pragma omp parallel for
     for (unsigned int x = 0; x < query.m_packet; x++)
     {
+        std::vector<index_distance_pair> idx_dist_vec(corpus.n_packet);
         for (unsigned int y = 0; y < corpus.n_packet; y++)
         {
             double distance = 0;
@@ -314,11 +314,12 @@ ResultPacket knn_dynamic(const QueryPacket &query, const CorpusPacket &corpus, s
 
     // A bounded max heap is used to store idx-distance of only k nearest points
     size_t max_heap_size = k;
-    std::vector<index_distance_pair> heap;
-    heap.reserve(k);
+    
+    #pragma omp parallel for
     for (unsigned int x = 0; x < query.m_packet; x++)
     {
-        heap.clear();
+        std::vector<index_distance_pair> heap;
+        heap.reserve(k);
         for (unsigned int y = 0; y < corpus.n_packet; y++)
         {
             double distance = 0;

@@ -6,14 +6,14 @@ SRC_DIR = src/
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
-    CFLAGS = -Wall -std=c++20 -lblas -g -O0 -DDEBUG
-	LFLAGS = -Wall -std=c++20 -lblas -g -O0 -DDEBUG
+    CFLAGS = -Wall -std=c++20 -lblas -g -O0 -DDEBUG -fopenmp
+	LFLAGS = -Wall -std=c++20 -lblas -g -O0 -DDEBUG -fopenmp
 	OBJ_DIR = obj_debug/
 	BIN_DIR = bin_debug/
 
 else
-    CFLAGS = -Wall -std=c++17 -O3 -lblas
-	LFLAGS = -Wall -std=c++17 -O3 -lblas
+    CFLAGS = -Wall -std=c++17 -O3 -lblas -fopenmp
+	LFLAGS = -Wall -std=c++17 -O3 -lblas -fopenmp
 	OBJ_DIR = obj/
 	BIN_DIR = bin/
 endif
