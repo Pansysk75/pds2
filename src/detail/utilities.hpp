@@ -21,3 +21,13 @@ namespace utilities
 	};
 
 }
+
+void print_mnist(double* grid) {
+  for (size_t i = 0; i < 28; ++i) {
+    for (size_t j = 0; j < 28; ++j) {
+        // take up 3 digits
+        std::cout << std::setw(3) << (int)grid[idx(i, j, 28)] << ' ';
+    }
+    std::cout << '\n';
+  }
+}

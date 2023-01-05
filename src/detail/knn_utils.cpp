@@ -1,6 +1,7 @@
 #include "knn_utils.hpp"
 #include "fileio.hpp"
 #include "knn_structs.hpp"
+#include "globals.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -218,10 +219,10 @@ file_packets(const std::string &query_path, const size_t query_start_idx,
              const size_t d_upper_limit) {
 
   auto [X, m, d] = load_csv<double>(query_path, query_start_idx, query_end_idx,
-                                    d_upper_limit, true);
+                                    d_upper_limit, globals::pad);
 
   auto [Y, n, d_ignore] = load_csv<double>(
-      corpus_path, corpus_start_idx, corpus_end_idx, d_upper_limit, true);
+      corpus_path, corpus_start_idx, corpus_end_idx, d_upper_limit, globals::pad);
 
   return std::make_tuple(
       QueryPacket(m, d, query_start_idx, query_end_idx, std::move(X)),

@@ -1,12 +1,18 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <iomanip>
 
 #include "detail/communication.hpp"
 #include "detail/knn_structs.hpp"
 #include "detail/mpi_process.hpp"
 #include "detail/utilities.hpp"
 #include "detail/worker.hpp"
+#include "detail/globals.hpp"
+
+#include <unistd.h>
+
+bool mnistPrint = false;
 
 #define MASTER_RANK 0
 
@@ -17,23 +23,25 @@ void print_results_with_labels(const std::string& q_filename, const std::string&
     // Print the results
     for (size_t i = 0; i < std::min(result.m_packet, 10ul); i++)
     {
-        std::cout << "The calculated " << std::min(result.k, (size_t)5ul) << " nearest neighbours of number: "
+        std::cout << "The calculated " << std::min(result.k, (size_t)5ul) << " nearest neighbours of vector with label: "
                   << query_labels[i] << std::endl;
-        std::cout << "Are actually the numbers:" << std::endl;
+        if(mnistPrint) print_mnist(&query.X[idx(i, 0, d)]);
+        std::cout << "Are the ones with labels:" << std::endl;
 
         for (size_t j = 0; j < std::min(result.k, (size_t)5ul); j++)
         {
             std::cout << corpus_labels[result.nidx[idx(i, j, result.k)]]
                       << " with an MSE of: " << result.ndist[idx(i, j, result.k)]
                       << std::endl;
+            if (mnistPrint) print_mnist(&corpus.Y[idx(result.nidx[idx(i, j, result.k)], 0, d)]);
         }
         std::cout << std::endl;
     }
 }
 
-void print_results_with_labels(const std::string& filename, const ResultPacket &result, size_t k)
+void print_results_with_labels(const std::string& filename, const ResultPacket &result, size_t d)
 {
-    print_results_with_labels(filename, filename, result, k);
+    print_results_with_labels(filename, filename, result, d);
 }
 
 void print_results(const std::string& q_filename, const std::string& c_filename, const ResultPacket& result, size_t d)
@@ -57,9 +65,9 @@ void print_results(const std::string& q_filename, const std::string& c_filename,
     }
 }
 
-void print_results(const std::string& filename, const ResultPacket &result, size_t k)
+void print_results(const std::string& filename, const ResultPacket &result, const size_t d)
 {
-    print_results(filename, filename, result, k);
+    print_results(filename, filename, result, d);
 }
 
 // Entry point for MPI master
@@ -115,29 +123,73 @@ void slave_main(mpi_process &process)
     w.work();
 }
 
+void printUsage(){
+    std::cout << "Usage: ./mpiKnn -f=[filename] -n=[n] -d=[d] -k=[k]\noptional arguments: -p=[parts to split data in each proccess] -l if file has labels -m to enable specialized mnist printing" << std::endl;
+}
 // MPI entry:
 int main(int argc, char **argv)
 {
-
     mpi_process process(&argc, &argv);
 
     // Handle command line arguments
-    if (argc != 5)
+    if (argc < 5)
     {
         if (process.is_master()){
-            std::cout << "Usage: " << argv[0] << " <filename> <n> <d> <k> [optional: -l for file with labels]" << std::endl;
+            printUsage();
         }
         return 1;
     }
 
+    std::string filename = "";
+    size_t n_total=0, d=0, k=0;
     
+    int opt;
+    while((opt = getopt(argc, argv, "f:n:d:k:p:l")) != -1){
+        if(optarg){
+            if(optarg[0] == '='){
+                optarg = optarg + 1;
+            }
+        }
+        switch(opt){
+            case 'f':
+                filename = std::string(optarg);
+                break;
+            case 'n':
+                n_total = atoi(optarg);
+                break;
+            case 'd':
+                d = atoi(optarg);
+                break;
+            case 'k':
+                k = atoi(optarg);
+                break;
+            case 'l':
+                globals::pad = true;
+                break;
+            case 'm':
+                mnistPrint = true;
+                break;
+            case 'p':
+                globals::parts = atoi(optarg);
+                break;
+            default:
+                if (process.is_master()){
+                    printUsage();
+                }
+                std::cout << "Invalid argument: " << opt << std::endl;
+                return 1;
+        }
+    }
+
+    if(n_total*d*k == 0 || filename == ""){
+        if (process.is_master()){
+            printUsage();
+        }
+        return 1;
+    }
+
     if (process.is_master())
     {
-        std::string filename = argv[1];
-        size_t n_total = std::stoi(argv[2]);
-        size_t d = std::stoi(argv[3]);
-        size_t k = std::stoi(argv[4]);
-
         std::cout << "filename: " << filename << std::endl;
         std::cout << "n_total: " << n_total << std::endl;
         std::cout << "d: " << d << std::endl;
@@ -152,8 +204,8 @@ int main(int argc, char **argv)
         std::cout << final_result << std::endl;
 
         std::cout << "Loaded query and corpus to print" << std::endl;
-        if(argc > 5 && std::string(argv[5]) == "-l"){
-            print_results_with_labels(filename, final_result, k);
+        if(globals::pad){
+            print_results_with_labels(filename, final_result, d);
         }else{
             print_results(filename, final_result, d);
         }
