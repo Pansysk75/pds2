@@ -9,8 +9,8 @@ int main(int argc, char **argv)
 {
     if (argc < 2)
     {
-        std::cout << "Usage:\t" << argv[0] << " -f=[filename] -g=random -n=[number of lines] -d=[number of dimensions] [optional: -p to pad with a line on top and a label=0]" << std::endl;
-        std::cout << "or:\t" << argv[0] << " -f=[filename] -g=regular -s=[side length] -d=[number of dimensions] [optional: -p to pad with a line on top and a label=0]" << std::endl;
+        std::cout << "Usage:\t" << argv[0] << " -f=[filename] -g=random -n=[number of lines] -d=[number of dimensions] [optional: -l to pad with a line on top and a label=0]" << std::endl;
+        std::cout << "or:\t" << argv[0] << " -f=[filename] -g=regular -s=[side length] -d=[number of dimensions] [optional: -l to pad with a line on top and a label=0]" << std::endl;
         return 1;
     }
 
@@ -20,7 +20,7 @@ int main(int argc, char **argv)
     bool pad = false;
 
     int opt, opt_got = 0;
-    while((opt = getopt(argc, argv, "f:g:n:s:d:p")) != -1)
+    while((opt = getopt(argc, argv, "f:g:n:s:d:l")) != -1)
     {
         // skip first char if it is =
         if(optarg) {
@@ -59,7 +59,7 @@ int main(int argc, char **argv)
             case 'd':
                 d = std::stoi(optarg);
                 break;
-            case 'p':
+            case 'l':
                 pad = true;
                 break;
             default:
