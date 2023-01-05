@@ -6,6 +6,7 @@
 #include <limits>
 #include <numeric>
 #include <tuple>
+#include <ctime> // for random seed
 
 size_t idx(size_t i, size_t j, size_t ld) { return i * ld + j; }
 
@@ -198,23 +199,13 @@ std::tuple<QueryPacket, CorpusPacket, size_t> regular_grid(size_t s, size_t d,
 std::tuple<QueryPacket, CorpusPacket> random_grid(size_t m, size_t n, size_t d) {
   size_t s = 1000;
 
+  std::srand(unsigned(std::time(0)));
+
   std::vector<double> Y(n * d);
+  std::generate_n(Y.begin(), n * d, [s]() { return rand() % s; });
 
-  for (size_t id = 0; id < n; id++) {
-    for (size_t comp = 0; comp < d; comp++) {
-      Y[idx(id, comp, d)] = rand() % s;
-    }
-  }
-
-  // Query points, m is given
   std::vector<double> X(m * d);
-
-  // random points in the grid
-  for (size_t i = 0; i < m; i++) {
-    const size_t y_choice = rand() % n;
-    for (size_t comp = 0; comp < d; comp++)
-      X[idx(i, comp, d)] = Y[idx(y_choice, comp, d)];
-  }
+  std::generate_n(X.begin(), m * d, [s]() { return rand() % s; });
 
   return std::make_tuple(QueryPacket(m, d, 0, m, std::move(X)),
                          CorpusPacket(n, d, 0, n, std::move(Y)));

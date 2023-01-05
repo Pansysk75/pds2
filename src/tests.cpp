@@ -4,6 +4,7 @@
 
 #include "detail/knn_algorithms.hpp"
 #include "detail/utilities.hpp"
+#include "detail/knn_utils.hpp"
 #include "detail/fileio.hpp"
 #include "detail/mpi_process.hpp"
 
@@ -14,8 +15,10 @@ bool compareResults(ResultPacket &p1, ResultPacket &p2)
   				(p1.m_packet == p2.m_packet) &&
               	(p1.n_packet == p2.n_packet);
 
-  if (flag == false)
+  if (flag == false){
     return false;
+    std::cout << "Mistake in flags" << std::endl;
+  }
 
   // For every point in query, if knn indices are the same
   flag = true;
@@ -25,9 +28,19 @@ bool compareResults(ResultPacket &p1, ResultPacket &p2)
     auto p1_end = p1.nidx.begin() + (i + 1) * p1.k;
     auto p2_begin = p2.nidx.begin() + i * p1.k;
 
-    flag = flag && std::is_permutation(p1_begin, p1_end, p2_begin);
+    if(!std::is_permutation(p1_begin, p1_end, p2_begin))
+    {
+      std::cout << "Mistake in indices" << std::endl;
+      std::cout << "i = " << i << std::endl;
+      for(size_t j = 0; j < p1.k; j++)
+      {
+        std::cout << p1.nidx[i * p1.k + j] << " " << p2.nidx[i * p1.k + j] << std::endl;
+        std::cout << p1.ndist[i * p1.k + j] << " " << p2.ndist[i * p1.k + j] << std::endl;
+      }
+      return false;
+    }
   }
-  return flag;
+  return true;
 }
 
 void test_knn(size_t size, size_t dim, size_t k, size_t idx_start, size_t idx_end)
@@ -35,11 +48,7 @@ void test_knn(size_t size, size_t dim, size_t k, size_t idx_start, size_t idx_en
 
   utilities::timer timer;
 
-  QueryPacket query(size, dim, idx_start, idx_end);
-  query.X = import_data(idx_start, idx_end, dim);
-
-  CorpusPacket corpus(size, dim, idx_start, idx_end);
-  corpus.Y = import_data(idx_start, idx_end, dim);
+  auto [query, corpus] = random_grid(size, size, dim);
 
   // Simple Impl
   timer.start();
@@ -61,7 +70,7 @@ void test_knn(size_t size, size_t dim, size_t k, size_t idx_start, size_t idx_en
 
   // split for memory
   timer.start();
-  ResultPacket r4 = knn_blas_in_parts(query, corpus, k, 1);
+  ResultPacket r4 = knn_blas_in_parts(query, corpus, k, 10);
   timer.stop();
   auto t4 = timer.get() / 1000000;
 
