@@ -199,7 +199,7 @@ std::tuple<QueryPacket, CorpusPacket, size_t> regular_grid(size_t s, size_t d,
 std::tuple<QueryPacket, CorpusPacket> random_grid(size_t m, size_t n, size_t d) {
   size_t s = 1000;
 
-  std::srand(unsigned(std::time(0)));
+  std::srand(unsigned(m*n*d));
 
   std::vector<double> Y(n * d);
   std::generate_n(Y.begin(), n * d, [s]() { return rand() % s; });
