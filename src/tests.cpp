@@ -76,21 +76,21 @@ void test_com(mpi_process &proc)
 
     com_port com(id, world_size);
 
-    std::vector<double> data(10, id);
+    std::vector<size_t> data(10, id);
     size_t data2 = id;
 
-    std::vector<double> recv_data(10);
+    std::vector<size_t> recv_data(10);
     size_t recv_data2;
 
     // send stuff in a circle
-    int next_rank = (id + 1) % world_size;
-    int prev_rank = (id + world_size - 1) % world_size;
+    size_t next_rank = (id + 1) % world_size;
+    size_t prev_rank = (id + world_size - 1) % world_size;
 
     std::cout << "\n\nStarting com test" << std::endl;
 
     std::cout << id << ": Sending to " << next_rank << ", receiving from " << prev_rank << std::endl;
 
-    for (int i = 0; i < world_size + 2; i++)
+    for (int _ = 0; _ < world_size + 2; _++)
     { // Repeat many times to expose potential issues
         // Data should do a full circle + 1
         com_request recv_req = com.receive_begin(prev_rank, recv_data, recv_data2);
@@ -101,10 +101,13 @@ void test_com(mpi_process &proc)
         std::swap(data2, recv_data2);
     }
 
-    std::cout << id << ": ";
-    for (auto &elem : recv_data)
-        std::cout << elem << " ";
-    std::cout << recv_data2 << std::endl;
+    bool success = true;
+    for (auto &elem : recv_data){
+      if(elem != next_rank) success = false;
+    }
+    if(recv_data2 != next_rank) success = false;
+      
+    std::cout << id << ": Communication test finished: " << (success?"success":"failure") << std::endl;
 }
 
 int main(int argc, char **argv) 
@@ -112,20 +115,26 @@ int main(int argc, char **argv)
 
     mpi_process proc(&argc, &argv);
 
-    //test_com(proc);
-
     if (proc.world_rank == 0)
     {
-        if(argc != 4)
+        if(argc != 4 && argc != 5)
         {
-            std::cout << "Usage: ./tests <size> <dim> <k>" << std::endl;
+            std::cout << "Usage: ./tests <size> <dim> <k> [optional flag: --test_com]" << std::endl;
             return 1;
         }
 
         size_t size = std::stoi(argv[1]); 
         size_t dim = std::stoi(argv[2]);
         size_t k = std::stoi(argv[3]);
-        test_knn(size, dim, k, 0, size);
+        test_knn(size, dim, k, 0, size);      
+    }
+
+    if(argc == 5 && std::string(argv[4])=="--test_com"){
+      if(proc.world_size == 1){
+        std::cout << "Not executing test_com, as world size == 1 (launch more than one process with mpirun)" << std::endl;
+      }else{
+        test_com(proc);
+      }
     }
     return 0;
 }
