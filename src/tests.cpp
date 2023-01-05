@@ -59,14 +59,22 @@ void test_knn(size_t size, size_t dim, size_t k, size_t idx_start, size_t idx_en
   timer.stop();
   auto t3 = timer.get() / 1000000;
 
+  // split for memory
+  timer.start();
+  ResultPacket r4 = knn_blas_in_parts(query, corpus, k, 1);
+  timer.stop();
+  auto t4 = timer.get() / 1000000;
+
   bool eq12 = compareResults(r1, r2);
   bool eq13 = compareResults(r1, r3);
+  bool eq14 = compareResults(r1, r4);
 
   std::cout << "Completed test" << std::endl;
-  std::cout << " t1 = " << t1 << " ms\n t2 = " << t2 << " ms\n t3 = " << t3 << " ms" << std::endl;
+  std::cout << " t1 = " << t1 << " ms\n t2 = " << t2 << " ms\n t3 = " << t3 << " ms\n t4 = " << t4 << " ms" << std::endl;
 
   std::cout << "Equality Test (1 vs 2): " << eq12 << std::endl;
   std::cout << "Equality Test (1 vs 3): " << eq13 << std::endl;
+  std::cout << "Equality Test (1 vs 4): " << eq14 << std::endl;
 }
 
 void test_com(mpi_process &proc)
