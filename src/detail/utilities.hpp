@@ -4,6 +4,8 @@
 #include <string>
 #include <algorithm>
 
+#define idx(i, j, n) ((i) * (n) + (j))
+
 namespace utilities
 {
 
