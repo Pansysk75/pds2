@@ -2,11 +2,10 @@
 #include <string>
 #include <vector>
 
-#include "detail/knn_algorithms.hpp"
 #include "detail/utilities.hpp"
 #include "detail/knn_utils.hpp"
+#include "detail/knn_algorithms.hpp"
 #include "detail/fileio.hpp"
-#include "detail/mpi_process.hpp"
 
 bool compareResults(ResultPacket &p1, ResultPacket &p2) 
 {
@@ -50,90 +49,41 @@ void test_knn(size_t size, size_t dim, size_t k, size_t idx_start, size_t idx_en
 
   auto [query, corpus] = random_grid(size, size, dim);
 
+    // Cool Impl
+  timer.start();
+  ResultPacket r2 = knn_blas(query, corpus, k);
+  timer.stop();
+  auto t2 = timer.get() / 1000000;
+  
+  std::cout << "Blas: " << t2 << "ms " << std::endl;
+
   // Simple Impl
   timer.start();
   ResultPacket r1 = knn_simple(query, corpus, k);
   timer.stop();
   auto t1 = timer.get() / 1000000;
 
-  // Cool Impl
-  timer.start();
-  ResultPacket r2 = knn_blas(query, corpus, k);
-  timer.stop();
-  auto t2 = timer.get() / 1000000;
-
-  // Whoa what an Impl
-  timer.start();
-  ResultPacket r3 = knn_dynamic(query, corpus, k);
-  timer.stop();
-  auto t3 = timer.get() / 1000000;
+  std::cout << "Simple: " << t1 << "ms " << std::endl;
 
   // split for memory
   timer.start();
-  ResultPacket r4 = knn_blas_in_parts(query, corpus, k, 10);
+  ResultPacket r3 = knn_blas_in_parts(query, corpus, k, 10);
   timer.stop();
-  auto t4 = timer.get() / 1000000;
+  auto t3 = timer.get() / 1000000;
+  std::cout << "Blas in Parts: " << t3 << "ms " << std::endl;
 
   bool eq12 = compareResults(r1, r2);
   bool eq13 = compareResults(r1, r3);
-  bool eq14 = compareResults(r1, r4);
 
   std::cout << "Completed test" << std::endl;
-  std::cout << " t1 = " << t1 << " ms\n t2 = " << t2 << " ms\n t3 = " << t3 << " ms\n t4 = " << t4 << " ms" << std::endl;
 
   std::cout << "Equality Test (1 vs 2): " << eq12 << std::endl;
   std::cout << "Equality Test (1 vs 3): " << eq13 << std::endl;
-  std::cout << "Equality Test (1 vs 4): " << eq14 << std::endl;
-}
-
-void test_com(mpi_process &proc)
-{
-    int id = proc.world_rank;
-    int world_size = proc.world_size;
-
-    com_port com(id, world_size);
-
-    std::vector<size_t> data(10, id);
-    size_t data2 = id;
-
-    std::vector<size_t> recv_data(10);
-    size_t recv_data2;
-
-    // send stuff in a circle
-    size_t next_rank = (id + 1) % world_size;
-    size_t prev_rank = (id + world_size - 1) % world_size;
-
-    std::cout << "\n\nStarting com test" << std::endl;
-
-    std::cout << id << ": Sending to " << next_rank << ", receiving from " << prev_rank << std::endl;
-
-    for (int _ = 0; _ < world_size + 2; _++)
-    { // Repeat many times to expose potential issues
-        // Data should do a full circle + 1
-        com_request recv_req = com.receive_begin(prev_rank, recv_data, recv_data2);
-        com_request send_req = com.send_begin(next_rank, data, data2);
-
-        com.wait(send_req, recv_req);
-        std::swap(data, recv_data);
-        std::swap(data2, recv_data2);
-    }
-
-    bool success = true;
-    for (auto &elem : recv_data){
-      if(elem != next_rank) success = false;
-    }
-    if(recv_data2 != next_rank) success = false;
-      
-    std::cout << id << ": Communication test finished: " << (success?"success":"failure") << std::endl;
 }
 
 int main(int argc, char **argv) 
 {
 
-    mpi_process proc(&argc, &argv);
-
-    if (proc.world_rank == 0)
-    {
         if(argc != 4 && argc != 5)
         {
             std::cout << "Usage: ./tests <size> <dim> <k> [optional flag: --test_com]" << std::endl;
@@ -144,14 +94,6 @@ int main(int argc, char **argv)
         size_t dim = std::stoi(argv[2]);
         size_t k = std::stoi(argv[3]);
         test_knn(size, dim, k, 0, size);      
-    }
 
-    if(argc == 5 && std::string(argv[4])=="--test_com"){
-      if(proc.world_size == 1){
-        std::cout << "Not executing test_com, as world size == 1 (launch more than one process with mpirun)" << std::endl;
-      }else{
-        test_com(proc);
-      }
-    }
     return 0;
 }

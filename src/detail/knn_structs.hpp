@@ -1,7 +1,5 @@
 #pragma once
 
-#include "communication.hpp"
-
 #include <iostream>
 #include <vector>
 
@@ -35,22 +33,6 @@ inline std::ostream &operator<<(std::ostream &os, const CorpusPacket &c) {
 
 // make sendable
 
-template <>
-inline com_request com_port::_impl_send_begin(int destination_id,
-                                              CorpusPacket &c) {
-  return send_begin(destination_id, c.d, c.n_packet, c.y_start_index,
-                    c.y_end_index, c.Y);
-}
-
-// make receivable
-
-template <>
-inline com_request com_port::_impl_receive_begin(int source_id,
-                                                 CorpusPacket &c) {
-  return receive_begin(source_id, c.d, c.n_packet, c.y_start_index,
-                       c.y_end_index, c.Y);
-}
-
 struct QueryPacket {
   size_t m_packet;
   size_t d;
@@ -77,24 +59,6 @@ inline std::ostream &operator<<(std::ostream &os, const QueryPacket &c) {
   os << c.x_start_index << "->" << c.x_end_index << " | n:" << c.m_packet
      << " d:" << c.d;
   return os;
-}
-
-// make sendable
-
-template <>
-inline com_request com_port::_impl_send_begin(int destination_id,
-                                              QueryPacket &c) {
-  return send_begin(destination_id, c.d, c.m_packet, c.x_start_index,
-                    c.x_end_index, c.X);
-}
-
-// make receivable
-
-template <>
-inline com_request com_port::_impl_receive_begin(int source_id,
-                                                 QueryPacket &c) {
-  return receive_begin(source_id, c.d, c.m_packet, c.x_start_index,
-                       c.x_end_index, c.X);
 }
 
 struct ResultPacket {
@@ -137,20 +101,4 @@ inline std::ostream &operator<<(std::ostream &os, const ResultPacket &c) {
   os << "X:" << c.x_start_index << "->" << c.x_end_index
      << " | Y:" << c.y_start_index << "->" << c.y_end_index;
   return os;
-}
-
-// make sendable
-
-template <>
-inline void com_port::_impl_send(int destination_id, ResultPacket &c) {
-  send(destination_id, c.k, c.m_packet, c.n_packet, c.ndist, c.nidx,
-       c.x_end_index, c.x_start_index, c.y_end_index, c.y_start_index);
-}
-
-// make receivable
-
-template <>
-inline void com_port::_impl_receive(int destination_id, ResultPacket &c) {
-  receive(destination_id, c.k, c.m_packet, c.n_packet, c.ndist, c.nidx,
-          c.x_end_index, c.x_start_index, c.y_end_index, c.y_start_index);
 }
