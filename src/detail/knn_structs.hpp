@@ -1,6 +1,7 @@
 #pragma once
 
 #include "communication.hpp"
+#include "globals.hpp"
 
 #include <iostream>
 #include <vector>

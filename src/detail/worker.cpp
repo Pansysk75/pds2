@@ -5,6 +5,8 @@
 #include "fileio.hpp"
 #include "worker.hpp"
 
+#include "globals.hpp"
+
 initial_work_data::initial_work_data(std::string filename, size_t idx_start, size_t idx_end, size_t max_size, size_t d, size_t k)
     : filename(filename.begin(), filename.end()),
       idx_start(idx_start), idx_end(idx_end), max_size(max_size), d(d), k(k) {}
@@ -54,16 +56,16 @@ void worker::initialize()
 
 void worker::print_debug()
 {
-    std::cout << "\n"
+    if(globals::debug) std::cout << "\n"
               << com.rank() << ": ";
-    std::cout << "\tquery: " << query;
-    std::cout << "\n\tcorpus: " << corpus;
-    std::cout << "\n\tresult: " << results << std::endl;
+    if(globals::debug) std::cout << "\tquery: " << query;
+    if(globals::debug) std::cout << "\n\tcorpus: " << corpus;
+    if(globals::debug) std::cout << "\n\tresult: " << results << std::endl;
 }
 
 void worker::print_debug(std::string str)
 {
-    std::cout << "\n"
+    if(globals::debug) std::cout << "\n"
               << com.rank() << ": " << str << std::endl;
 }
 

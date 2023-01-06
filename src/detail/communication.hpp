@@ -4,6 +4,8 @@
 #include <vector>
 #include <iostream>
 
+#include "globals.hpp"
+
 class com_request : public std::vector<MPI_Request>
 {
     // A communicator request, will hold many MPI_Requests when
@@ -66,7 +68,7 @@ public:
     void receive(int source_id, P &...p)
     {
         (_impl_receive(source_id, p), ...);
-        std::cout << "PROC\t" << _rank << "\tRECV " << _tag << std::endl;
+        if(globals::debug) std::cout << "PROC\t" << _rank << "\tRECV " << _tag << std::endl;
         _tag = 0; // reset tag
     }
 
@@ -81,7 +83,7 @@ public:
     com_request receive_begin(int source_id, P &...p)
     {
         com_request request = (_impl_receive_begin(source_id, p) << ...);
-        std::cout << "PROC\t" << _rank << "\tISEND\t" << _tag << std::endl;
+        if(globals::debug) std::cout << "PROC\t" << _rank << "\tISEND\t" << _tag << std::endl;
         _tag = 0; // reset tag
         return request;
     }
@@ -97,7 +99,7 @@ public:
     void send(int destination_id, P &...p)
     {
         (_impl_send(destination_id, p), ...);
-        std::cout << "PROC\t" << _rank << "\tSEND\t" << _tag << std::endl;
+        if(globals::debug) std::cout << "PROC\t" << _rank << "\tSEND\t" << _tag << std::endl;
         _tag = 0; // reset tag
     }
 
@@ -112,7 +114,7 @@ public:
     com_request send_begin(int destination_id, P &...p)
     {
         com_request request = (_impl_send_begin(destination_id, p) << ...);
-        std::cout << "PROC\t" << _rank << "\tIRECV\t" << _tag << std::endl;
+        if(globals::debug) std::cout << "PROC\t" << _rank << "\tIRECV\t" << _tag << std::endl;
         _tag = 0;
         return request;
     }

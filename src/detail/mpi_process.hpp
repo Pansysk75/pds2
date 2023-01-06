@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <mpi/mpi.h>
+#include "globals.hpp"
 
 struct mpi_process{
     // Initializes MPI process instance and holds relevant data
@@ -15,7 +16,7 @@ struct mpi_process{
     }
 
     ~mpi_process(){
-        std::cout << world_rank << ": exited" << std::endl;
+        if(globals::debug) std::cout << world_rank << ": exited" << std::endl;
         MPI_Finalize();
     }
 

@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 bool mnistPrint = false;
+bool printRes = false;
 
 #define MASTER_RANK 0
 
@@ -57,7 +58,7 @@ void print_results(const std::string& q_filename, const std::string& c_filename,
 
         for (size_t j = 0; j < std::min(result.k, (size_t)5ul); j++)
         {
-            std::cout << corpus.Y[result.nidx[idx(i, j, result.k)]]
+            std::cout << result.nidx[idx(i, j, result.k)]
                       << " with an MSE of: " << result.ndist[idx(i, j, result.k)]
                       << std::endl;
         }
@@ -88,7 +89,7 @@ ResultPacket master_main(mpi_process &process, std::string filename, size_t n_to
         init_data.push_back(
             initial_work_data(filename, idx_start, idx_end, max_size, d, k));
 
-        std::cout << "Worker " << i << ": " << filename << " n=" << idx_start << "->" << idx_end << std::endl;
+        if(globals::debug) std::cout << "Worker " << i << ": " << filename << " n=" << idx_start << "->" << idx_end << std::endl;
 
         // send to everyone except this
         if (i != MASTER_RANK)
@@ -124,7 +125,8 @@ void slave_main(mpi_process &process)
 }
 
 void printUsage(){
-    std::cout << "Usage: ./mpiKnn -f=[filename] -n=[n] -d=[d] -k=[k]\noptional arguments: -p=[parts to split data in each proccess] -l if file has labels -m to enable specialized mnist printing" << std::endl;
+    std::cout << "Usage: ./mpiKnn -f=[filename] -n=[n] -d=[d] -k=[k]\n\
+optional arguments: -p=[parts to split data in each proccess]\n-l if file has labels\n-P to print the results in the\n-m to enable specialized mnist printing\n-D to print out debug information" << std::endl;
 }
 // MPI entry:
 int main(int argc, char **argv)
@@ -144,7 +146,7 @@ int main(int argc, char **argv)
     size_t n_total=0, d=0, k=0;
     
     int opt;
-    while((opt = getopt(argc, argv, "f:n:d:k:p:l")) != -1){
+    while((opt = getopt(argc, argv, "f:n:d:k:p:lPD")) != -1){
         if(optarg){
             if(optarg[0] == '='){
                 optarg = optarg + 1;
@@ -171,6 +173,12 @@ int main(int argc, char **argv)
                 break;
             case 'p':
                 globals::parts = atoi(optarg);
+                break;
+            case 'D':
+                globals::debug = true;
+                break;
+            case 'P':
+                printRes = true;
                 break;
             default:
                 if (process.is_master()){
@@ -204,12 +212,14 @@ int main(int argc, char **argv)
         std::cout << final_result << std::endl;
 
         std::cout << "Loaded query and corpus to print" << std::endl;
-        if(globals::pad){
-            print_results_with_labels(filename, final_result, d);
-        }else{
-            print_results(filename, final_result, d);
-        }
+        if(printRes){
+            if(globals::pad){
+                print_results_with_labels(filename, final_result, d);
+            }else{
+                print_results(filename, final_result, d);
+            }
 
+        }
         std::cout << "Total time: " << my_timer.get() / 1000000.0 << " ms"
                   << std::endl;
     }
