@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <iomanip>
 
 #include "detail/communication.hpp"
 #include "detail/knn_structs.hpp"
