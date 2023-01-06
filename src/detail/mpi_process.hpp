@@ -1,7 +1,7 @@
 #pragma once
 
 #include <iostream>
-#include <mpi/mpi.h>
+#include <mpi.h>
 #include "globals.hpp"
 
 struct mpi_process{
