@@ -26,7 +26,7 @@ void test_com(mpi_process &proc)
 
     std::cout << id << ": Sending to " << next_rank << ", receiving from " << prev_rank << std::endl;
 
-    for (int _ = 0; _ < world_size + 2; _++)
+    for (int _ = 0; _ < world_size + 1; _++)
     { // Repeat many times to expose potential issues
         // Data should do a full circle + 1
         com_request recv_req = com.receive_begin(prev_rank, recv_data, recv_data2);
@@ -38,10 +38,10 @@ void test_com(mpi_process &proc)
     }
 
     bool success = true;
-    for (auto &elem : recv_data){
-      if(elem != next_rank) success = false;
+    for (auto &elem : data){
+      if(elem != prev_rank) success = false;
     }
-    if(recv_data2 != next_rank) success = false;
+    if(data2 != prev_rank) success = false;
       
     std::cout << id << ": Communication test finished: " << (success?"success":"failure") << std::endl;
 }
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
     mpi_process proc(&argc, &argv);
 
     if(proc.world_size == 1){
-      std::cout << "Not executing test_com, as world size == 1 (launch more than one process with mpirun)" << std::endl;
+      std::cout << "Not executing test, as MPI world size == 1. Please launch more than mpi one process (using mpirun or srun)" << std::endl;
     }else{
       test_com(proc);
     }
