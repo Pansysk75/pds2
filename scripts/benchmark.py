@@ -16,9 +16,9 @@ args = vars(parser.parse_args())
 
 results_file_name = "results.csv"
 
-base_command = "mpirun -np {} bin/mpi {} {} {} {}"
+base_command = "mpirun -np {} bin/mpi -f={} -n={} -d={} -k={}"
 if(args["distributed"]):
-    base_command = "srun --nodes {} bin/mpi {} {} {} {}"
+    base_command = "srun --nodes {} bin/mpi -f={} -n={} -d={} -k={}"
 
 dataset = "datasets/mnist_test.csv"
 
@@ -39,10 +39,11 @@ dataset = "datasets/mnist_test.csv"
 # n_start, n_end, n_num_points = (100, 10000, 10)
 # n_list = [int(n) for n in np.logspace(math.log10(n_start), math.log10(n_end), int(n_num_points))]
 
-n_list = [2**i for i in range(7, 14)]
+# n_list = [2**i for i in range(7, 14)]
+n_list = [2000]
 d_list = [8,16,32, 64, 128]
 k_list = [5]
-mpi_np_list = [4]
+mpi_np_list = [1,4]
 
 ### Repeat each measurement many times
 n_iterations = 5 
