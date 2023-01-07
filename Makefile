@@ -59,7 +59,7 @@ DEPS = $(wildcard $(SRC_DIR)/detail/*.hpp)
 
 
 # Actual build target
-do_build: $(info $$BIN_DIR is [${BIN_DIR}])$(EXEC_BIN)
+do_build: $(info Building version:[${BUILD_TYPE} $(BUILD_ENV)])$(EXEC_BIN)
 
 
 
