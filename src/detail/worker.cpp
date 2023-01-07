@@ -71,11 +71,9 @@ void worker::print_debug(std::string str)
 
 void worker::work()
 {
-
-
     for (int i = 0; i < com.world_size() - 1; i++)
     {
-        tracer.write_event_begin("knn_cycle_iteration");
+     	tracer.write_event_begin("knn_cycle_iteration");
         print_debug("Started iteration " + std::to_string(i));
         print_debug();
 
@@ -87,40 +85,51 @@ void worker::work()
         com_request send_req = com.send_begin(prev_rank, corpus);
         com_request recv_req = com.receive_begin(next_rank, receiving_corpus);
 
+        tracer.write_event_begin("calculate");
         // Work on working set
         ResultPacket batch_result = knn_blas_in_parts(query, corpus, init_data.k);
-        // Combine this result with previous results
+        tracer.write_event_end("calculate");
 
-        tracer.write_event_begin("knn_calculation");
+        // Combine this result with previous results
+        tracer.write_event_begin("combine");
         results = combineKnnResultsSameX(results, batch_result);
-        tracer.write_event_end("knn_calculation");
+        tracer.write_event_end("combine");
 
         // debug worker state
         print_debug();
 
-        tracer.write_event_begin("communication_wait");
+
+        print_debug("Finished transmission #" + std::to_string(i));
+
+        // Start sending the part we just proccessed
+        // Start receiving the part we will proccess later
+        tracer.write_event_begin("comm_wait");
         // Wait for open communications to finish
         com.wait(send_req);
         com.wait(recv_req);
-        tracer.write_event_end("communication_wait");
-
-        print_debug("Finished transmission #" + std::to_string(i));
+	    tracer.write_event_end("comm_wait");
 
         // Update query_set with received set (using std::swap is the
         // equivelant of swapping the pointers of two C arrays)
         std::swap(corpus, receiving_corpus);
         tracer.write_event_end("knn_cycle_iteration");
+
+
     }
     tracer.write_event_begin("knn_cycle_iteration");
+    tracer.write_event_begin("calculate");
     // Work on last batch
     ResultPacket batch_result = knn_blas_in_parts(query, corpus, init_data.k);
+    tracer.write_event_end("calculate");
     // Combine this result with previous results
+    tracer.write_event_begin("combine");
     results = combineKnnResultsSameX(results, batch_result);
+    tracer.write_event_end("combine");
     print_debug();
     tracer.write_event_end("knn_cycle_iteration");
-
     // Work finished, send results to master process
     tracer.write_event_begin("knn_send_final_results");
+
     if (com.rank() != MASTER_RANK)
     {
         com.send(MASTER_RANK, results);

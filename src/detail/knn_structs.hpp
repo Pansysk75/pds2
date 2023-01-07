@@ -43,6 +43,13 @@ inline com_request com_port::_impl_send_begin(int destination_id,
                     c.y_end_index, c.Y);
 }
 
+template <>
+inline void com_port::_impl_send(int destination_id,
+                                              CorpusPacket &c) {
+  return send(destination_id, c.d, c.n_packet, c.y_start_index,
+                    c.y_end_index, c.Y);
+}
+
 // make receivable
 
 template <>
@@ -51,6 +58,14 @@ inline com_request com_port::_impl_receive_begin(int source_id,
   return receive_begin(source_id, c.d, c.n_packet, c.y_start_index,
                        c.y_end_index, c.Y);
 }
+
+template <>
+inline void com_port::_impl_receive(int source_id,
+                                                 CorpusPacket &c) {
+  return receive(source_id, c.d, c.n_packet, c.y_start_index,
+                       c.y_end_index, c.Y);
+}
+
 
 struct QueryPacket {
   size_t m_packet;
