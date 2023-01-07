@@ -10,6 +10,10 @@
 #include "detail/worker.hpp"
 #include "detail/globals.hpp"
 
+#include <mpi.h>
+#include <omp.h>
+#include <cblas.h>
+
 #include <unistd.h>
 
 bool mnistPrint = false;
@@ -133,100 +137,11 @@ int main(int argc, char **argv)
 {
     mpi_process process(&argc, &argv);
 
-    // Handle command line arguments
-    if (argc < 5)
-    {
-        if (process.is_master()){
-            printUsage();
-        }
-        return 1;
-    }
+    std::cout << "Process " << process.world_rank << " of " << process.world_size << std::endl;
+    std::cout << "Number of threads: " << omp_get_max_threads() << std::endl;
+    std::cout << "openblas threads: " << openblas_get_num_threads() << std::endl;
 
-    std::string filename = "";
-    size_t n_total=0, d=0, k=0;
-    
-    int opt;
-    while((opt = getopt(argc, argv, "f:n:d:k:p:lPD")) != -1){
-        if(optarg){
-            if(optarg[0] == '='){
-                optarg = optarg + 1;
-            }
-        }
-        switch(opt){
-            case 'f':
-                filename = std::string(optarg);
-                break;
-            case 'n':
-                n_total = atoi(optarg);
-                break;
-            case 'd':
-                d = atoi(optarg);
-                break;
-            case 'k':
-                k = atoi(optarg);
-                break;
-            case 'l':
-                globals::pad = true;
-                break;
-            case 'm':
-                mnistPrint = true;
-                break;
-            case 'p':
-                globals::parts = atoi(optarg);
-                break;
-            case 'D':
-                globals::debug = true;
-                break;
-            case 'P':
-                printRes = true;
-                break;
-            default:
-                if (process.is_master()){
-                    printUsage();
-                }
-                std::cout << "Invalid argument: " << opt << std::endl;
-                return 1;
-        }
-    }
 
-    if(n_total*d*k == 0 || filename == ""){
-        if (process.is_master()){
-            printUsage();
-        }
-        return 1;
-    }
-
-    if (process.is_master())
-    {
-        std::cout << "filename: " << filename << std::endl;
-        std::cout << "n_total: " << n_total << std::endl;
-        std::cout << "d: " << d << std::endl;
-        std::cout << "k: " << k << std::endl;
-
-        utilities::timer my_timer;
-        my_timer.start();
-        ResultPacket final_result = master_main(process, filename, n_total, d, k);
-        my_timer.stop();
-
-        std::cout << "FINAL RESULTS\n";
-        std::cout << final_result << std::endl;
-
-        std::cout << "Loaded query and corpus to print" << std::endl;
-        if(printRes){
-            if(globals::pad){
-                print_results_with_labels(filename, final_result, d);
-            }else{
-                print_results(filename, final_result, d);
-            }
-
-        }
-        std::cout << "Total time: " << my_timer.get() / 1000000.0 << " ms"
-                  << std::endl;
-    }
-    else
-    {
-        slave_main(process);
-    }
 
     return 0;
 }
