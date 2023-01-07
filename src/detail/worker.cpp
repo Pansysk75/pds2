@@ -41,7 +41,10 @@ void worker::initialize()
 
     print_debug("Importing data from " + filename + ": " + std::to_string(start_idx) + "->" + std::to_string(end_idx));
 
+    tracer.write_event_begin("read file");
     auto [temp_query, temp_corpus] = file_packets(filename, start_idx, end_idx, d);
+    tracer.write_event_end("read file");
+
     query = std::move(temp_query);
     corpus = std::move(temp_corpus);
 
@@ -69,11 +72,12 @@ void worker::print_debug(std::string str)
               << com.rank() << ": " << str << std::endl;
 }
 
+
 void worker::work()
 {
     for (int i = 0; i < com.world_size() - 1; i++)
     {
-     	tracer.write_event_begin("knn_cycle_iteration");
+     	tracer.write_event_begin("knn cycle iteration");
         print_debug("Started iteration " + std::to_string(i));
         print_debug();
 
@@ -112,11 +116,11 @@ void worker::work()
         // Update query_set with received set (using std::swap is the
         // equivelant of swapping the pointers of two C arrays)
         std::swap(corpus, receiving_corpus);
-        tracer.write_event_end("knn_cycle_iteration");
+        tracer.write_event_end("knn cycle iteration");
 
 
     }
-    tracer.write_event_begin("knn_cycle_iteration");
+    tracer.write_event_begin("knn cycle iteration");
     tracer.write_event_begin("calculate");
     // Work on last batch
     ResultPacket batch_result = knn_blas_in_parts(query, corpus, init_data.k);
@@ -126,14 +130,14 @@ void worker::work()
     results = combineKnnResultsSameX(results, batch_result);
     tracer.write_event_end("combine");
     print_debug();
-    tracer.write_event_end("knn_cycle_iteration");
+    tracer.write_event_end("knn cycle iteration");
     // Work finished, send results to master process
-    tracer.write_event_begin("knn_send_final_results");
+    tracer.write_event_begin("send final results");
 
     if (com.rank() != MASTER_RANK)
     {
         com.send(MASTER_RANK, results);
     }
-    tracer.write_event_end("knn_send_final_results");
+    tracer.write_event_end("send final results");
     tracer.output_to_console();
 }
