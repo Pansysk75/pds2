@@ -84,11 +84,6 @@ void worker::work()
         int next_rank = (com.rank() + 1) % com.world_size();
         int prev_rank = (com.rank() + com.world_size() - 1) % com.world_size();
 
-        // Start sending the part we just proccessed
-        // Start receiving the part we will proccess later
-        com_request send_req = com.send_begin(prev_rank, corpus);
-        com_request recv_req = com.receive_begin(next_rank, receiving_corpus);
-
         tracer.write_event_begin("calculate");
         // Work on working set
         ResultPacket batch_result = knn_blas_in_parts(query, corpus, init_data.k);
@@ -105,12 +100,16 @@ void worker::work()
 
         print_debug("Finished transmission #" + std::to_string(i));
 
-        // Start sending the part we just proccessed
-        // Start receiving the part we will proccess later
+   
+        // send-receive
         tracer.write_event_begin("comm_wait");
-        // Wait for open communications to finish
-        com.wait(send_req);
-        com.wait(recv_req);
+        if(com.rank()%2){
+            com.send(prev_rank, corpus);
+            com.receive(next_rank, receiving_corpus);
+        }else{
+            com.receive(next_rank, receiving_corpus);
+            com.send(prev_rank, corpus);
+        }
 	    tracer.write_event_end("comm_wait");
 
         // Update query_set with received set (using std::swap is the
@@ -141,3 +140,4 @@ void worker::work()
     tracer.write_event_end("send final results");
     tracer.output_to_console();
 }
+
