@@ -1,3 +1,15 @@
+# Usage examples: 
+#
+#	(default:) 	make
+#	(debug):	make BUILD_TYPE=debug
+#	(hpc):		make BUILD_ENV=hpc
+#	(debug+hpc)	make BUILD_ENV=hpc BUILD_TYPE=debug
+#
+# Or, by first setting the environment variables:
+# 				export BUILD_ENV=hpc
+# we can just call
+#				make
+
 CC=mpic++
 
 BIN_DIR = bin

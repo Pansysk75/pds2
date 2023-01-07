@@ -72,6 +72,7 @@ void worker::print_debug(std::string str)
 void worker::work()
 {
 
+
     for (int i = 0; i < com.world_size() - 1; i++)
     {
 
@@ -87,7 +88,7 @@ void worker::work()
         com_request recv_req = com.receive_begin(next_rank, receiving_corpus);
 
         // Work on working set
-        ResultPacket batch_result = knn_blas(query, corpus, init_data.k);
+        ResultPacket batch_result = knn_blas_in_parts(query, corpus, init_data.k);
         // Combine this result with previous results
 
         results = combineKnnResultsSameX(results, batch_result);
@@ -106,7 +107,7 @@ void worker::work()
         std::swap(corpus, receiving_corpus);
     }
     // Work on last batch
-    ResultPacket batch_result = knn_blas(query, corpus, init_data.k);
+    ResultPacket batch_result = knn_blas_in_parts(query, corpus, init_data.k);
     // Combine this result with previous results
     results = combineKnnResultsSameX(results, batch_result);
     print_debug();

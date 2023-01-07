@@ -288,6 +288,18 @@ ResultPacket knn_blas_in_parts(const QueryPacket &query, const CorpusPacket &cor
     return res;
 }
 
+
+ResultPacket knn_blas_in_parts(const QueryPacket &query, const CorpusPacket &corpus, const size_t k_arg)
+{
+    // Determine part size to limit memory usage
+    const size_t part_bytes_lim = 500000;
+    const size_t part_doubles_lim = part_bytes_lim/sizeof(double);
+    const size_t part_lines_lim = std::max(part_doubles_lim/corpus.n_packet, 1ul);
+    const size_t n_parts = (query.m_packet + part_lines_lim - 1)/part_lines_lim;
+    std::cout << "n_knn_parts = "<< n_parts << std::endl;
+    return knn_blas_in_parts(query, corpus, k_arg, n_parts);
+}
+
 ResultPacket knn_dynamic(const QueryPacket &query, const CorpusPacket &corpus, size_t k_arg)
 {
 
