@@ -11,8 +11,8 @@ ifeq ($(DEBUG), 1)
 	OBJ_DIR = obj_debug/
 	BIN_DIR = bin_debug/
 else
-    CFLAGS = -Wall -std=c++17 -O3 -lblas -fopenmp
-	LFLAGS = -Wall -std=c++17 -O3 -lblas -fopenmp
+    CFLAGS = -Wall -std=c++17 -O3 -lblas 
+	LFLAGS = -Wall -std=c++17 -O3 -lblas 
 	OBJ_DIR = obj/
 	BIN_DIR = bin/
 endif
