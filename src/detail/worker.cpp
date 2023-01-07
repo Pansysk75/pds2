@@ -75,7 +75,7 @@ void worker::work()
 
     for (int i = 0; i < com.world_size() - 1; i++)
     {
-
+        tracer.write_event_begin("knn_cycle_iteration");
         print_debug("Started iteration " + std::to_string(i));
         print_debug();
 
@@ -91,30 +91,40 @@ void worker::work()
         ResultPacket batch_result = knn_blas_in_parts(query, corpus, init_data.k);
         // Combine this result with previous results
 
+        tracer.write_event_begin("knn_calculation");
         results = combineKnnResultsSameX(results, batch_result);
+        tracer.write_event_end("knn_calculation");
 
         // debug worker state
         print_debug();
 
+        tracer.write_event_begin("communication_wait");
         // Wait for open communications to finish
         com.wait(send_req);
         com.wait(recv_req);
+        tracer.write_event_end("communication_wait");
 
         print_debug("Finished transmission #" + std::to_string(i));
 
         // Update query_set with received set (using std::swap is the
         // equivelant of swapping the pointers of two C arrays)
         std::swap(corpus, receiving_corpus);
+        tracer.write_event_end("knn_cycle_iteration");
     }
+    tracer.write_event_begin("knn_cycle_iteration");
     // Work on last batch
     ResultPacket batch_result = knn_blas_in_parts(query, corpus, init_data.k);
     // Combine this result with previous results
     results = combineKnnResultsSameX(results, batch_result);
     print_debug();
+    tracer.write_event_end("knn_cycle_iteration");
 
     // Work finished, send results to master process
+    tracer.write_event_begin("knn_send_final_results");
     if (com.rank() != MASTER_RANK)
     {
         com.send(MASTER_RANK, results);
     }
+    tracer.write_event_end("knn_send_final_results");
+    tracer.output_to_console();
 }

@@ -5,6 +5,7 @@
 #include "knn_utils.hpp"
 #include "knn_algorithms.hpp"
 #include "fileio.hpp"
+#include "utilities.hpp"
 
 #define MASTER_RANK 0
 
@@ -48,6 +49,8 @@ inline void com_port::_impl_receive(int source_id, initial_work_data &d)
 // The results are then sent back to the master process.
 class worker
 {
+private:
+    utilities::tracer tracer;
 
 public:
     // Communication port which facilitates all communication
@@ -67,6 +70,7 @@ public:
 
     // KNN result for local points, will be combined in master process
     ResultPacket results;
+
 
     worker(int rank, int world_size);
     worker(int rank, int world_size, initial_work_data init_data);
