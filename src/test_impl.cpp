@@ -154,7 +154,7 @@ void test_knn(size_t size, size_t dim, size_t k_arg)
 int main(int argc, char **argv)
 {
 
-    if (argc != 6 && argc != 7)
+    if (argc != 4 && argc != 5)
     {
         std::cout << "Usage: ./tests <size> <dim> <k>"
                   << std::endl;
@@ -164,8 +164,6 @@ int main(int argc, char **argv)
     size_t size = std::stoi(argv[1]);
     size_t dim = std::stoi(argv[2]);
     size_t k = std::stoi(argv[3]);
-    size_t omp_t = std::stoi(argv[4]);
-    size_t blas_t = std::stoi(argv[5]);
 
     test_knn(size, dim, k);
 

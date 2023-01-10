@@ -14,12 +14,12 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    size_t n=0, s=0, d=0;
-    enum { RANDOM, REGULAR } mode;
+    int n=0, s=0, d=0;
+    enum { RANDOM, REGULAR } mode = RANDOM;
     std::string filename;
     bool pad = false;
 
-    int opt, opt_got = 0;
+    int opt;
     while((opt = getopt(argc, argv, "f:g:n:s:d:l")) != -1)
     {
         // skip first char if it is =
@@ -85,7 +85,7 @@ int main(int argc, char **argv)
     {
         auto [__, corpus, ___] = regular_grid(s, d, 0);
         size_t lines = 1;
-        for (size_t i = 0; i < d; i++)
+        for (int i = 0; i < d; i++)
             lines *= s;
         vectorToCSV(filename, corpus.Y, lines, d, pad);
 

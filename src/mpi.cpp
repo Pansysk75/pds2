@@ -89,7 +89,7 @@ int main(int argc, char **argv)
     bool mnistPrint = false, printRes = false;
     
     int opt;
-    while((opt = getopt(argc, argv, "f:n:d:k:p:M:lPD")) != -1){
+    while((opt = getopt(argc, argv, "f:n:d:k:M:lPD")) != -1){
         if(optarg){
             if(optarg[0] == '='){
                 optarg = optarg + 1;
@@ -113,9 +113,6 @@ int main(int argc, char **argv)
                 break;
             case 'm':
                 mnistPrint = true;
-                break;
-            case 'p':
-                globals::parts = atoi(optarg);
                 break;
             case 'D':
                 globals::debug = true;
@@ -145,8 +142,9 @@ int main(int argc, char **argv)
 
     if (process.is_master())
     {
+        std::cout << "Running with parameters: " << std::endl;
         std::cout << "filename: " << filename << std::endl;
-        std::cout << "n_total: " << n_total << std::endl;
+        std::cout << "n: " << n_total << std::endl;
         std::cout << "d: " << d << std::endl;
         std::cout << "k: " << k << std::endl;
 
@@ -155,17 +153,16 @@ int main(int argc, char **argv)
         ResultPacket final_result = master_main(process, filename, n_total, d, k);
         main_timer.stop();
 
-        std::cout << "FINAL RESULTS\n";
-        std::cout << final_result << std::endl;
+        std::cout << "Finished Calculations" << std::endl;
+        std::cout << "X, Y ranges covered: " << final_result << std::endl;
 
-        std::cout << "Loaded query and corpus to print" << std::endl;
         if(printRes){
+            std::cout << "Loaded query and corpus to print" << std::endl;
             if(globals::pad){
                 print_results_with_labels(filename, final_result, d, mnistPrint);
             }else{
                 print_results(filename, final_result, d);
             }
-
         }
         std::cout << "Total time: " << main_timer.get() / 1000000.0 << " ms"
                   << std::endl;
