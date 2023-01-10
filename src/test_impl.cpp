@@ -156,7 +156,7 @@ int main(int argc, char **argv)
 
     if (argc != 6 && argc != 7)
     {
-        std::cout << "Usage: ./tests <size> <dim> <k> <omp threads> <blas threads>[optional flag: --test_com]"
+        std::cout << "Usage: ./tests <size> <dim> <k>"
                   << std::endl;
         return 1;
     }
@@ -166,9 +166,6 @@ int main(int argc, char **argv)
     size_t k = std::stoi(argv[3]);
     size_t omp_t = std::stoi(argv[4]);
     size_t blas_t = std::stoi(argv[5]);
-
-    omp_set_num_threads(omp_t);
-    openblas_set_num_threads(blas_t);
 
     test_knn(size, dim, k);
 
