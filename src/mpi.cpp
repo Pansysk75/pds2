@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <iomanip>
 
 #include "detail/communication.hpp"
 #include "detail/knn_structs.hpp"
@@ -12,64 +11,7 @@
 
 #include <unistd.h>
 
-bool mnistPrint = false;
-bool printRes = false;
-
 #define MASTER_RANK 0
-
-void print_results_with_labels(const std::string& q_filename, const std::string& c_filename, const ResultPacket& result, size_t d)
-{
-    auto [query, query_labels, corpus, corpus_labels] = file_packets_with_label(q_filename, 0, result.m_packet, c_filename, 0, result.n_packet, d);
-
-    // Print the results
-    for (size_t i = 0; i < std::min(result.m_packet, 10ul); i++)
-    {
-        std::cout << "The calculated " << std::min(result.k, (size_t)5ul) << " nearest neighbours of vector with label: "
-                  << query_labels[i] << std::endl;
-        if(mnistPrint) print_mnist(&query.X[idx(i, 0, d)]);
-        std::cout << "Are the ones with labels:" << std::endl;
-
-        for (size_t j = 0; j < std::min(result.k, (size_t)5ul); j++)
-        {
-            std::cout << corpus_labels[result.nidx[idx(i, j, result.k)]]
-                      << " with an MSE of: " << result.ndist[idx(i, j, result.k)]
-                      << std::endl;
-            if (mnistPrint) print_mnist(&corpus.Y[idx(result.nidx[idx(i, j, result.k)], 0, d)]);
-        }
-        std::cout << std::endl;
-    }
-}
-
-void print_results_with_labels(const std::string& filename, const ResultPacket &result, size_t d)
-{
-    print_results_with_labels(filename, filename, result, d);
-}
-
-void print_results(const std::string& q_filename, const std::string& c_filename, const ResultPacket& result, size_t d)
-{
-    auto [query, corpus] = file_packets(q_filename, 0, result.m_packet, c_filename, 0, result.n_packet, d);
-
-    // Print the results
-    for (size_t i = 0; i < std::min(result.m_packet, 10ul); i++)
-    {
-        std::cout << "The calculated " << std::min(result.k, (size_t)5ul) << " nearest neighbours of point in line: "
-                  << i << std::endl;
-        std::cout << "Are the points in lines:" << std::endl;
-
-        for (size_t j = 0; j < std::min(result.k, (size_t)5ul); j++)
-        {
-            std::cout << result.nidx[idx(i, j, result.k)]
-                      << " with an MSE of: " << result.ndist[idx(i, j, result.k)]
-                      << std::endl;
-        }
-        std::cout << std::endl;
-    }
-}
-
-void print_results(const std::string& filename, const ResultPacket &result, const size_t d)
-{
-    print_results(filename, filename, result, d);
-}
 
 // Entry point for MPI master
 ResultPacket master_main(mpi_process &process, std::string filename, size_t n_total, size_t d, size_t k)
@@ -126,7 +68,7 @@ void slave_main(mpi_process &process)
 
 void printUsage(){
     std::cout << "Usage: ./mpiKnn -f=[filename] -n=[n] -d=[d] -k=[k]\n\
-optional arguments: -p=[parts to split data in each proccess]\n-l if file has labels\n-P to print the results in the\n-m to enable specialized mnist printing\n-D to print out debug information" << std::endl;
+optional arguments:\n-M=[approximate maximum memmory usage in *megabytes* for each process]\n-l if file has labels\n-P to print the results in the\n-m to enable specialized mnist printing\n-D to print out debug information" << std::endl;
 }
 // MPI entry:
 int main(int argc, char **argv)
@@ -144,9 +86,10 @@ int main(int argc, char **argv)
 
     std::string filename = "";
     size_t n_total=0, d=0, k=0;
+    bool mnistPrint = false, printRes = false;
     
     int opt;
-    while((opt = getopt(argc, argv, "f:n:d:k:p:lPD")) != -1){
+    while((opt = getopt(argc, argv, "f:n:d:k:p:M:lPD")) != -1){
         if(optarg){
             if(optarg[0] == '='){
                 optarg = optarg + 1;
@@ -177,6 +120,10 @@ int main(int argc, char **argv)
             case 'D':
                 globals::debug = true;
                 break;
+            case 'M':
+                // size in megabytes
+                globals::knn_part_bytes_limit = atoi(optarg)*1000000;
+                break;
             case 'P':
                 printRes = true;
                 break;
@@ -203,10 +150,10 @@ int main(int argc, char **argv)
         std::cout << "d: " << d << std::endl;
         std::cout << "k: " << k << std::endl;
 
-        utilities::timer my_timer;
-        my_timer.start();
+        utilities::timer main_timer;
+        main_timer.start();
         ResultPacket final_result = master_main(process, filename, n_total, d, k);
-        my_timer.stop();
+        main_timer.stop();
 
         std::cout << "FINAL RESULTS\n";
         std::cout << final_result << std::endl;
@@ -214,13 +161,13 @@ int main(int argc, char **argv)
         std::cout << "Loaded query and corpus to print" << std::endl;
         if(printRes){
             if(globals::pad){
-                print_results_with_labels(filename, final_result, d);
+                print_results_with_labels(filename, final_result, d, mnistPrint);
             }else{
                 print_results(filename, final_result, d);
             }
 
         }
-        std::cout << "Total time: " << my_timer.get() / 1000000.0 << " ms"
+        std::cout << "Total time: " << main_timer.get() / 1000000.0 << " ms"
                   << std::endl;
     }
     else

@@ -81,6 +81,8 @@ ResultPacket knn_blas(const QueryPacket &query,
     const size_t d = query.d;
     const size_t k = res.k;
 
+    // We want to get to Dij = x_i^2 + y_j^2 - 2*x_i*y_i
+
     std::vector<double> X2(res.m_packet);
     for (size_t i = 0; i < res.m_packet; i++)
     {
@@ -131,28 +133,6 @@ ResultPacket knn_blas(const QueryPacket &query,
     }
 #endif
 
-    /*
-            auto ys = corpus.y_start_index;
-            auto ye = corpus.y_end_index;
-            auto xs = query.x_start_index;
-            auto xe = query.x_end_index;
-
-            if(ys > xe || xs > ye) {
-                // no overlap
-            } else {
-                // overlap
-                auto os = std::max(xs, ys);
-                auto oe = std::min(xe, ye);
-
-                if(xe - xs < ys - ye) {
-                    // x is shorter
-                    for(size_t )
-                } else {
-                    // y is shorter
-                }
-            }
-    */
-
     res.nidx.resize(query.m_packet * k);
     res.ndist.resize(query.m_packet * k);
 
@@ -196,13 +176,16 @@ ResultPacket knn_blas_in_parts(const QueryPacket &query, const CorpusPacket &cor
     const size_t d = query.d;
     const size_t k = res.k;
 
-    std::vector<double> X2(res.m_packet);
-    for (size_t i = 0; i < res.m_packet; i++)
+    // Target is Dij = xi^2 + yi^2 - 2*xi*yi
+
+    // first save all xi^2 and yi^2 for fast access
+    std::vector<double> X2(query.m_packet);
+    for (size_t i = 0; i < query.m_packet; i++)
     {
         X2[i] = cblas_ddot(
             d,
-            &query.X[idx(i, 0, query.d)], 1,
-            &query.X[idx(i, 0, query.d)], 1);
+            &query.X[idx(i, 0, d)], 1,
+            &query.X[idx(i, 0, d)], 1);
     }
 
     std::vector<double> Y2(corpus.n_packet);
@@ -215,19 +198,19 @@ ResultPacket knn_blas_in_parts(const QueryPacket &query, const CorpusPacket &cor
         );
     }
 
+    // prepare result matrices to accept the results
     res.nidx.resize(query.m_packet * k);
     res.ndist.resize(query.m_packet * k);
 
     // split query into parts
-    // std::vector<double> D(query.m_packet * corpus.n_packet);
-
     const size_t query_part_max_size = (query.m_packet + parts - 1) / parts;
+
+    // maximum size of D, since the last query might be smaller
     std::vector<double> D(query_part_max_size * corpus.n_packet);
     for (size_t part = 0; part < parts; part++)
     {
         const size_t query_part_start = part * query_part_max_size;
         const size_t query_part_end = std::min(query_part_start + query_part_max_size, query.m_packet);
-
         const size_t query_part_size = query_part_end - query_part_start;
 
 
@@ -241,6 +224,7 @@ ResultPacket knn_blas_in_parts(const QueryPacket &query, const CorpusPacket &cor
                 D[idx(i, j, corpus.n_packet)] = X2[query_part_start + i] + Y2[j];
             }
         }
+
         // Dij += -2 * x_i * y_j
         cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, query_part_size,
                     corpus.n_packet, corpus.d, -2.0, &query.X[idx(query_part_start, 0, d)], query.d,
@@ -255,18 +239,20 @@ ResultPacket knn_blas_in_parts(const QueryPacket &query, const CorpusPacket &cor
                         D[idx(i, j, corpus.n_packet)] = std::numeric_limits<double>::max();
 #endif
 
+
+        // find k nearest neighbors for each query
         for (size_t i = query_part_start; i < query_part_end; i++)
         {
             std::vector<size_t> indices(corpus.n_packet);
             std::iota(indices.begin(), indices.end(), 0);
 
-            size_t n_packet = corpus.n_packet;
-
-            size_t i_in_part = i - query_part_start;
+            // get the indices of the first k smallest numbers in row by 
+            // sorting an array of indices, comparing the values of D with the indices
+            const size_t i_in_part = i - query_part_start;
             std::partial_sort_copy(
                 indices.begin(), indices.end(),
                 &res.nidx[idx(i, 0, k)], &res.nidx[idx(i, k, k)], 
-                [&D, i_in_part, n_packet](size_t a, size_t b){
+                [&D, i_in_part, n_packet = corpus.n_packet](size_t a, size_t b){
                     return D[idx(i_in_part, a, n_packet)] < D[idx(i_in_part, b, n_packet)]; 
                 }
             );
@@ -276,9 +262,10 @@ ResultPacket knn_blas_in_parts(const QueryPacket &query, const CorpusPacket &cor
             {
                 res.nidx[idx(i, j, k)] += corpus.y_start_index;
             }
+            // save the distances of the k nearest neighbors
             for (size_t j = 0; j < k; j++)
             {
-                size_t jth_nn = res.nidx[idx(i, j, k)] - corpus.y_start_index;
+                const size_t jth_nn = res.nidx[idx(i, j, k)] - corpus.y_start_index;
 
                 res.ndist[idx(i, j, k)] = D[idx(i_in_part, jth_nn, corpus.n_packet)];
             }
@@ -293,10 +280,14 @@ ResultPacket knn_blas_in_parts(const QueryPacket &query, const CorpusPacket &cor
 {
     // Determine part size to limit memory usage
     const size_t part_bytes_lim = globals::knn_part_bytes_limit;
+
+    // size limit in doubles
     const size_t part_doubles_lim = part_bytes_lim/sizeof(double);
+
+    // each line consists of n doubles
     const size_t part_lines_lim = std::max(part_doubles_lim/corpus.n_packet, 1ul);
-    const size_t n_parts = (query.m_packet + part_lines_lim - 1)/part_lines_lim;
-    return knn_blas_in_parts(query, corpus, k_arg, n_parts);
+    const size_t m_parts = (query.m_packet + part_lines_lim - 1)/part_lines_lim;
+    return knn_blas_in_parts(query, corpus, k_arg, m_parts);
 }
 
 ResultPacket knn_dynamic(const QueryPacket &query, const CorpusPacket &corpus, size_t k_arg)

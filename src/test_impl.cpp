@@ -94,7 +94,7 @@ void test_knn(size_t size, size_t dim, size_t k_arg)
     std::cout << "Equality Test (simple vs blas): " << eqsb << std::endl;
     std::cout << "Equality Test (simple vs blas in parts): " << eqsbp << std::endl;
     std::cout << "Num threads omp: " << omp_get_max_threads() << std::endl; 
-    std::cout << "Num threads blas: " << openblas_get_num_threads() << std::endl;
+   // std::cout << "Num threads blas: " << openblas_get_num_threads() << std::endl;
 /*
 
     auto factorial = [](int a) {
