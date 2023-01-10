@@ -86,7 +86,8 @@ int main(int argc, char **argv)
 
     if(argc != 4 && argc != 5)
     {
-        std::cout << "Usage: ./tests <size> <dim> <k> [optional flag: --test_com]" << std::endl;
+        std::cout << "Usage: ./tests <size> <dim> <k> <omp threads> <blas threads>"
+                  << std::endl;
         return 1;
     }
 
