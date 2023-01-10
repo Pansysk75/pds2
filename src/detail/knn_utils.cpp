@@ -181,11 +181,9 @@ std::tuple<QueryPacket, CorpusPacket, size_t> regular_grid(size_t s, size_t d,
   std::vector<double> X(m * d);
 
   // random points in the grid
-  for (size_t i = 0; i < m; i++) {
-    const size_t y_choice = rand() % n;
+  for (size_t i = 0; i < m; i++)
     for (size_t comp = 0; comp < d; comp++)
-      X[idx(i, comp, d)] = Y[idx(y_choice, comp, d)];
-  }
+      X[idx(i, comp, d)] = 1 + (rand() % (s-2));
 
   // 3**d is the imediate neighbors
   size_t k = 1;
