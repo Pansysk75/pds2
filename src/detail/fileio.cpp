@@ -24,8 +24,7 @@ load_csv(const std::string& filename, const size_t line_begin,
     // if the file exists
     if (!std::filesystem::exists(filename))
     {
-        std::cout << "File does not exist" << std::endl;
-        return std::make_tuple(std::move(data), 0, 0);
+        throw std::runtime_error("File '" + filename + "' does not exist.");
     }
 
     size_t lines_got = 0;
@@ -93,8 +92,7 @@ load_csv_with_labels(const std::string &filename, const size_t line_begin,
     // check if the file exists
     if (!std::filesystem::exists(filename))
     {
-        std::cout << "File does not exist" << std::endl;
-        return std::make_tuple(std::vector<T>(), 0, 0, std::vector<std::string>());
+        throw std::runtime_error("File '" + filename + "' does not exist.");
     }
 
     std::vector<T> data;
