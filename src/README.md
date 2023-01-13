@@ -4,8 +4,6 @@
 - `mpi`: main executable, runs the knn algorithm with specified parameters distributed over *n* processes using _MPI_
 - `test_impl`: parametric test of different implementations without utilizing _MPI_
 - `test_mpi`: test of communication between different _MPI_ procceses
-
-
 - `detail/`
     - `communication`: Handles communication between mpi processes
     - `fileio`: Handles loading and saving `.csv` files
