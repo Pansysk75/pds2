@@ -89,7 +89,7 @@ int main(int argc, char **argv)
     bool mnistPrint = false, printRes = false;
     
     int opt;
-    while((opt = getopt(argc, argv, "f:n:d:k:M:lPD")) != -1){
+    while((opt = getopt(argc, argv, "f:n:d:k:M:m:lPD")) != -1){
         if(optarg){
             if(optarg[0] == '='){
                 optarg = optarg + 1;
